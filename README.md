@@ -17,6 +17,12 @@ Add the following lines to your clients' configs:
     # do not cache auth info
     auth-nocache
 
+OpenVPN will re-negotiate username/password details every 3600 seconds by default. To disable that behaviour add the following line
+to both client and server configs:
+
+    # disable username/password renegotiation
+    reneg-sec 0
+
 At this moment the plugin does not support any configuration. You will have to recompile it if you want any changes to otp parameters.
 The secret file should be placed at /etc/ppp/otp-secrets. Default OTP parameters are:
     
