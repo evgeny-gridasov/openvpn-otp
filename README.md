@@ -5,6 +5,21 @@ This plug-in adds support for OTP time based tokens for OpenVPN.
 Compatible with Google Authenticator software token or software/hardware based OTP tokens.
 
 Compile and install openvpn-otp.so file to your OpenVPN plugins directory (usually /usr/lib/openvpn or /usr/lib64/openvpn/plugins).
+
+To bootstrap autotools (generate configure and Makefiles):
+
+    ./autogen.sh
+
+Build and install with:
+
+    ./configure --prefix=/usr
+    make install
+
+The default install location (PREFIX/LIB/openvpn) can be changed by
+passing the directory with --with-openvpn-plugin-dir to ./configure:
+
+    ./configure --with-openvpn-plugin-dir=/plugin/dir
+
 Add the following lines to your server config:
 
     # use otp passwords
