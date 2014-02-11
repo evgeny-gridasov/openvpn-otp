@@ -1,2 +1,3 @@
 #!/bin/sh
-autoreconf -i
+mkdir m4
+autoreconf -ivf
