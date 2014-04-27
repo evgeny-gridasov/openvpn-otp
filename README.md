@@ -51,7 +51,7 @@ The otp-secrets file format is exactly the same as for ppp-otp plugin which make
 the same machine and using the same secrets file. The secrets file has the following layout:
 
     # user server type:hash:encoding:key:pin:udid client
-    # where type is topt or mopt
+    # where type is totp or motp
     #       hash should be sha1 in most cases
     #       encoding is base32 or text
     #       key is your key in encoding format
@@ -59,10 +59,10 @@ the same machine and using the same secrets file. The secrets file has the follo
     #       udid is used in motp mode
     #
     # use sha1/base32 for Google Authenticator
-    bob otp topt:sha1:base32:K7BYLIU5D2V33X6S:1234:xxx *
+    bob otp totp:sha1:base32:K7BYLIU5D2V33X6S:1234:xxx *
     
     # use text encoding for text based format
-    jane otp topt:sha1:text:1234567890:9876:xxx *
+    jane otp totp:sha1:text:1234567890:9876:xxx *
     
 When users vpn in, they will need to provide their username and pin+current OTP number from the OTP token. Example for user bob:
 
