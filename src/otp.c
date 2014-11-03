@@ -15,6 +15,7 @@
 #include "openvpn/openvpn-plugin.h"
 
 #include "base32.h"
+#include "hex.h"
 #define MAXWORDLEN 256
 
 
@@ -45,31 +46,16 @@ typedef struct otp_params {
     const char *udid;
 } otp_params_t;
 
-#if DEBUG
-
 #define LOG(format, ...) logmessage(format, ## __VA_ARGS__)
 
-static FILE *logfp = NULL;
-
-static void
-logmessage(const char *format, ...)
+static void logmessage(const char *format, ...)
 {
-    if (NULL == logfp) {
-        logfp = fopen("/tmp/otp.log", "a+");
-    }
-
     va_list va;
 
     va_start(va, format);
-    vfprintf(logfp, format, va);
+    vfprintf(stderr, format, va);
     va_end(va);
 }
-
-#else
-
-#define LOG(format, ...)
-
-#endif
 
 #ifndef htobe64
 
@@ -260,7 +246,6 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
     const EVP_MD *otp_digest;
     EVP_MD_CTX ctx;
     char secret[256];
-    uint8_t base32[256]; 
     int i;
     int ok = 0;
 
@@ -270,7 +255,7 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
 
     secrets_file = fopen(otp_secrets, "r");
     if (NULL == secrets_file) {
-        LOG("Failed to open %s\n", otp_secrets);
+        LOG("OTP-AUTH: failed to open %s\n", otp_secrets);
         goto done;
     }
 
@@ -302,7 +287,7 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
 
     otp_digest = EVP_get_digestbyname(otp_params.hash);
     if (!otp_digest) {
-        LOG("Unknown digest '%s'\n", otp_params.hash);
+        LOG("OTP-AUTH: unknown digest '%s'\n", otp_params.hash);
         goto done;
     }
 
@@ -310,14 +295,20 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
     const void * otp_key;
     
     if (!strcasecmp(otp_params.encoding, "base32")) {
+    	uint8_t base32[256];
         key_len = base32_decode((uint8_t *) otp_params.key, base32, sizeof(base32)); 
         otp_key = base32;
+    } else
+    if (!strcasecmp(otp_params.encoding, "hex")) {
+	uint8_t hex[256];
+	key_len = hex_decode(otp_params.key, hex, sizeof(hex));
+	otp_key = hex;
     } else
     if (!strcasecmp(otp_params.encoding, "text")) {
         otp_key = otp_params.key;
         key_len = strlen(otp_params.key);
     } else {
-        LOG("Unknown encoding '%s'\n", otp_params.encoding);
+        LOG("OTP-AUTH: unknown encoding '%s'\n", otp_params.encoding);
         goto done;
     }
     unsigned int user_pin = atoi(otp_params.pin);
@@ -326,15 +317,22 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
     uint8_t mac[EVP_MAX_MD_SIZE];
     unsigned maclen;
 
-    if (!strcasecmp("totp", otp_params.method)) {
+    if (!strncasecmp("totp", otp_params.method, 4)) {
         HMAC_CTX hmac;
         const uint8_t *otp_bytes;
         uint32_t otp, divisor = 1;
-        int range = otp_slop / totp_step;
+        int tstep = totp_step;
+        int tdigits = totp_digits;
+        if (!strcasecmp("totp-60-6", otp_params.method)) {
+            tstep = 60;
+            tdigits = 6;
+        }
+        int range = otp_slop / tstep;
 
-        T = (time(NULL) - totp_t0) / totp_step;
 
-        for (i = 0; i < totp_digits; ++i) {
+        T = (time(NULL) - totp_t0) / tstep;
+
+        for (i = 0; i < tdigits; ++i) {
             divisor *= 10;
         }
 
@@ -352,7 +350,7 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
             otp %= divisor;
 
             snprintf(secret, sizeof(secret),
-                    "%04u%0*u", user_pin, totp_digits, otp);
+                    "%04u%0*u", user_pin, tdigits, otp);
 
             if (vpn_username && !strcmp (vpn_username, user_entry.name)
                 && vpn_secret && !strcmp (vpn_secret, secret)) {
@@ -392,7 +390,7 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
         }
     }
     else {
-        LOG("Unknown OTP method %s\n", otp_params.method);
+        LOG("OTP-AUTH: unknown OTP method %s\n", otp_params.method);
     }
 
 done:
@@ -400,10 +398,6 @@ done:
 
     if (NULL != secrets_file) {
         fclose(secrets_file);
-    }
-
-    if (!ok) {
-        printf("No OTP secret found for authenticating %s", vpn_username);
     }
 
     return ok;
@@ -463,6 +457,8 @@ openvpn_plugin_func_v1 (openvpn_plugin_handle_t handle, const int type, const ch
   /* get username/password from envp string array */
   const char *username = get_env ("username", envp);
   const char *password = get_env ("password", envp);
+  const char *ip = get_env ("untrusted_ip", envp);
+  const char *port = get_env ("untrusted_port", envp);
 
   const int ulen = strlen(username);
   const int pwlen = strlen(password);
@@ -473,10 +469,14 @@ openvpn_plugin_func_v1 (openvpn_plugin_handle_t handle, const int type, const ch
   /* check entered username/password against what we require */
   int ok = otp_verify(username, password);
 
-  if (ok == 1)
+  if (ok == 1) {
+    LOG("OTP-AUTH: authentication succeeded for username '%s', remote %s:%s\n", username, ip, port);
     return OPENVPN_PLUGIN_FUNC_SUCCESS;
-  else
+  }
+  else {
+    LOG("OTP-AUTH: authentication failed for username '%s', remote %s:%s\n", username, ip, port);
     return OPENVPN_PLUGIN_FUNC_ERROR;
+  }
 }
 
 
