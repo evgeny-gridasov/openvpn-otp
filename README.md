@@ -51,7 +51,7 @@ The otp-secrets file format is exactly the same as for ppp-otp plugin which make
 the same machine and using the same secrets file. The secrets file has the following layout:
 
     # user server type:hash:encoding:key:pin:udid client
-    # where type is totp, totp-6-60 or motp
+    # where type is totp, totp-60-6 or motp
     #       hash should be sha1 in most cases
     #       encoding is base32, hex or text
     #       key is your key in encoding format
