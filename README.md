@@ -76,7 +76,7 @@ Troubleshooting
 ===============
 
 Make sure that time is in sync on the server and on your phone/tablet/other OTP client device.
-You may use oathtool for token verification or as an OTP client:
+You may use oathtool for token verification on your OpenVPN server:
 
     $ oathtool -b K7BYLIU5D2V33X6S
     995277
