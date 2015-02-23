@@ -83,7 +83,7 @@ You may use oathtool for token verification or as an OTP client:
 
 The tokens should be identical on your OTP client and OpenVPN server.
 
-Also, check that /etc/ppp/otp-tokens file:
+Also, check that /etc/ppp/otp-secrets file:
  - is accessible by OpenVPN
  - has spaces as field separators
  - has UNIX style line separator (new line only without CR)
