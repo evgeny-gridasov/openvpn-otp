@@ -47,8 +47,7 @@ The secret file should be placed at /etc/ppp/otp-secrets and set file permission
     Number of digits to use from TOTP hash = 6
     Step value for MOTP = 10 
 
-The otp-secrets file format is exactly the same as for ppp-otp plugin which makes it very convenient to have PPP and OpenVPN running on
-the same machine and using the same secrets file. The secrets file has the following layout:
+The otp-secrets file format is exactly the same as for ppp-otp plugin which makes it very convenient to have PPP and OpenVPN running on the same machine and using the same secrets file. The secrets file has the following layout:
 
     # user server type:hash:encoding:key:pin:udid client
     # where type is totp, totp-60-6 or motp
@@ -71,6 +70,24 @@ When users vpn in, they will need to provide their username and pin+current OTP 
 
     username: bob
     password: 1234920151
+
+
+Troubleshooting
+===============
+
+Make sure that time is in sync on the server and on your phone/tablet/other OTP client device.
+You may use oathtool for token verification or as an OTP client:
+
+    $ oathtool -b K7BYLIU5D2V33X6S
+    995277
+
+The tokens should be identical on your OTP client and OpenVPN server.
+
+Also, check that /etc/ppp/otp-tokens file:
+ - is accessible by OpenVPN
+ - has spaces as field separators
+ - has UNIX style line separator (new line only without CR)
+
 
 Inspired by ppp-otp plugin written by GitHub user kolbyjack
 This plugin written by Evgeny Gridasov (evgeny.gridasov@gmail.com)
