@@ -78,13 +78,10 @@ The following exceptions are required for this plugin to work properly on a syst
 ```
 #============= openvpn_t ==============
 
-#!!!! This avc is allowed in the current policy
 allow openvpn_t auth_home_t:file { unlink open };
 
-#!!!! This avc is allowed in the current policy
 allow openvpn_t user_home_dir_t:dir { write remove_name add_name };
 
-#!!!! This avc is allowed in the current policy
 allow openvpn_t user_home_dir_t:file { rename write getattr read create unlink open };
 ```
 
