@@ -71,6 +71,19 @@ When users vpn in, they will need to provide their username and pin+current OTP 
     username: bob
     password: 1234920151
 
+SELinux
+===============
+The following exceptions are required for this plugin to work properly on a system with Security Enhanced Linux running in enforcing mode:
+
+```
+#============= openvpn_t ==============
+
+allow openvpn_t auth_home_t:file { unlink open };
+
+allow openvpn_t user_home_dir_t:dir { write remove_name add_name };
+
+allow openvpn_t user_home_dir_t:file { rename write getattr read create unlink open };
+```
 
 Troubleshooting
 ===============
