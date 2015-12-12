@@ -242,7 +242,6 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
     otp_params_t otp_params;
 
     const EVP_MD *otp_digest;
-    EVP_MD_CTX ctx;
     char secret[256];
     uint8_t decoded_secret[256];
     int i;
@@ -304,8 +303,7 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
         LOG("OTP-AUTH: unknown encoding '%s'\n", otp_params.encoding);
         goto done;
     }
-    unsigned int user_pin = atoi(otp_params.pin);
-
+    
     uint64_t T, Tn;
     uint8_t mac[EVP_MAX_MD_SIZE];
     unsigned maclen;
@@ -342,8 +340,7 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
                   (otp_bytes[2] << 8) | otp_bytes[3];
             otp %= divisor;
 
-            snprintf(secret, sizeof(secret),
-                    "%04u%0*u", user_pin, tdigits, otp);
+            snprintf(secret, sizeof(secret), "%s%0*u", otp_params.pin, tdigits, otp);
 
             if (vpn_username && !strcmp (vpn_username, user_entry.name)
                 && vpn_secret && !strcmp (vpn_secret, secret)) {
@@ -359,13 +356,13 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
         T = time(NULL) / motp_step;
 
         for (i = -range; !ok && i <= range; ++i) {
+            EVP_MD_CTX ctx;
             EVP_MD_CTX_init(&ctx);
             EVP_DigestInit_ex(&ctx, otp_digest, NULL);
             n = sprintf(buf, "%" PRIu64, T + i);
             EVP_DigestUpdate(&ctx, buf, n);
             EVP_DigestUpdate(&ctx, otp_key, key_len);
-            n = sprintf(buf, "%u", user_pin);
-            EVP_DigestUpdate(&ctx, buf, n);
+            EVP_DigestUpdate(&ctx, otp_params.pin, strlen(otp_params.pin));
             if (otp_params.udid) {
                 int udid_len = strlen(otp_params.udid);
                 EVP_DigestUpdate(&ctx, otp_params.udid, udid_len);

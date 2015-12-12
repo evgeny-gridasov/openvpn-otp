@@ -59,22 +59,36 @@ The otp-secrets file format is exactly the same as for ppp-otp plugin, which mak
     #       hash should be sha1 in most cases
     #       encoding is base32, hex or text
     #       key is your key in encoding format
-    #       pin is a 4-6 digit pin
+    #       pin may be a number or a string (may be empty)
     #       udid is used only in motp mode and ignored in totp mode
     #
-    # use sha1/base32 for Google Authenticator
+    # use sha1/base32 for Google Authenticator with a simple pin
     bob otp totp:sha1:base32:K7BYLIU5D2V33X6S:1234:xxx *
     
+    # use sha1/base32 for Google Authenticator with a strong pin
+    alice otp totp:sha1:base32:46HV5FIYE33TKWYP:5uP3rH4x0r:xxx *
+    
+    # use sha1/base32 for Google Authenticator without a pin
+    john otp totp:sha1:base32:LJYHR64TUI7IL3RD::xxx *
+
     # use totp-60-6 and sha1/hex for hardware based 60 seconds / 6 digits tokens
     mike otp totp-60-6:sha1:hex:5c5a75a87ba1b48cb0b6adfd3b7a5a0e:6543:xxx *
     
     # use text encoding for clients supporting plain text keys
     jane otp totp:sha1:text:1234567890:9876:xxx *
     
-When users vpn in, they will need to provide their username and pin+current OTP number from the OTP token. Example for user bob:
+When users vpn in, they will need to provide their username and pin+current OTP number from the OTP token. Examples for users bob, alice and john:
 
-    username: bob
-    password: 1234920151
+```
+username: bob
+password: 1234920151
+
+username: alice
+password: 5uP3rH4x0r797104
+
+username: john
+password: 408923
+```
 
 SELinux
 ===============
@@ -96,7 +110,7 @@ Troubleshooting
 Make sure that time is in sync on the server and on your phone/tablet/other OTP client device.
 You may use oathtool for token verification on your OpenVPN server:
 
-    $ oathtool -b K7BYLIU5D2V33X6S
+    $ oathtool --totp -b K7BYLIU5D2V33X6S
     995277
 
 The tokens should be identical on your OTP client and OpenVPN server.
