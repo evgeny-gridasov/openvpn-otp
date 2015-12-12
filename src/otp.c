@@ -19,9 +19,7 @@
 #define MAXWORDLEN 256
 
 
-static char *DEFAULT_OTP_SECRETS = "/etc/ppp/otp-secrets";
-
-static char *otp_secrets = NULL;
+static char *otp_secrets = "/etc/ppp/otp-secrets";
 static int otp_slop = 180;
 
 static int totp_t0 = 0;
@@ -250,10 +248,6 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
     int i;
     int ok = 0;
 
-    if (NULL == otp_secrets) {
-        otp_secrets = DEFAULT_OTP_SECRETS;
-    }
-
     secrets_file = fopen(otp_secrets, "r");
     if (NULL == secrets_file) {
         LOG("OTP-AUTH: failed to open %s\n", otp_secrets);
@@ -442,8 +436,50 @@ openvpn_plugin_open_v1 (unsigned int *type_mask, const char *argv[], const char 
    * --auth-user-pass-verify callback.
    */
   *type_mask = OPENVPN_PLUGIN_MASK (OPENVPN_PLUGIN_AUTH_USER_PASS_VERIFY);
+ 
 
-  return (openvpn_plugin_handle_t) DEFAULT_OTP_SECRETS;
+  /*
+   * Set up configuration variables
+   *
+   */ 
+  const char * cfg_otp_secrets = get_env("otp_secrets", argv);
+  if (cfg_otp_secrets != NULL) {
+     otp_secrets = strdup(cfg_otp_secrets);
+  }
+  LOG("OTP secrets: %s\n", otp_secrets);
+
+  const char * cfg_otp_slop = get_env("otp_slop", argv);
+  if (cfg_otp_slop != NULL) {
+     otp_slop = atoi(cfg_otp_slop);
+  }
+  LOG("OTP otp_slop: %i\n", otp_slop);
+
+  const char * cfg_totp_t0 = get_env("totp_t0", argv);
+  if (cfg_totp_t0 != NULL) {
+     totp_t0 = atoi(cfg_totp_t0);
+  }
+  LOG("OTP totp_t0: %i\n", totp_t0);
+
+  const char * cfg_totp_step= get_env("totp_step", argv);
+  if (cfg_totp_step != NULL) {
+     totp_step = atoi(cfg_totp_step);
+  }
+  LOG("OTP totp_step: %i\n", totp_step);
+
+  const char * cfg_totp_digits = get_env("totp_digits", argv);
+  if (cfg_totp_digits != NULL) {
+     totp_digits = atoi(cfg_totp_digits);
+  }
+  LOG("OTP totp_digits: %i\n", totp_digits);
+
+  const char * cfg_motp_step = get_env("motp_step", argv);
+  if (cfg_motp_step != NULL) {
+     motp_step = atoi(cfg_motp_step);
+  }
+  LOG("OTP motp_step: %i\n", motp_step);
+
+
+  return (openvpn_plugin_handle_t) otp_secrets;
 }
 
 

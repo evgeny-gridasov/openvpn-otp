@@ -20,10 +20,25 @@ passing the directory with --with-openvpn-plugin-dir to ./configure:
 
     ./configure --with-openvpn-plugin-dir=/plugin/dir
 
-Add the following lines to your server config:
+Add the following lines to your OpenVPN server configuration file to deploy OTP plugin with default settings:
 
     # use otp passwords
     plugin /usr/lib64/openvpn/plugins/openvpn-otp.so
+
+By default the following settings are applied:
+
+    otp_secrets=/etc/ppp/otp-secrets      # OTP secret file
+    otp_slop=180                          # Maximum allowed clock slop (seconds)
+    totp_t0=0                             # T0 value for TOTP (time drift in seconds)
+    totp_step=30                          # Step value for TOTP (seconds)
+    totp_digits=6                         # Number of digits to use from TOTP hash
+    motp_step=10                          # Step value for MOTP
+
+Add these variables on the same line as **plugin /.../openvpn-otp.so** line if you want different values.
+If you skip one of the variables, the default value will be applied.
+
+    # use otp passwords with custom settings
+    plugin /usr/lib64/openvpn/plugins/openvpn-otp.so otp_secrets=/etc/my_otp_secret_file otp_slop=300 totp_t0=2 totp_step=60 totp_digits=8 motp_step=10
 
 Add the following lines to your clients' configs:
 
@@ -32,22 +47,12 @@ Add the following lines to your clients' configs:
     # do not cache auth info
     auth-nocache
 
-OpenVPN will re-negotiate username/password details every 3600 seconds by default. To disable that behaviour add the following line
-to both client and server configs:
+OpenVPN will re-negotiate username/password details every 3600 seconds by default. To disable that behaviour, add the following line to both client and server configs:
 
     # disable username/password renegotiation
     reneg-sec 0
 
-At this moment the plugin does not support any configuration. You will have to recompile it if you want any changes to the otp parameters. There is a special case for 60 second hardware time tokens, see configuration below.
-The secret file should be placed at /etc/ppp/otp-secrets and set file permissions to 0600. Default OTP parameters are:
-    
-    Maximum allowed clock slop = 180
-    T0 value for TOTP (time drift) = 0
-    Step value for TOTP = 30
-    Number of digits to use from TOTP hash = 6
-    Step value for MOTP = 10 
-
-The otp-secrets file format is exactly the same as for ppp-otp plugin which makes it very convenient to have PPP and OpenVPN running on the same machine and using the same secrets file. The secrets file has the following layout:
+The otp-secrets file format is exactly the same as for ppp-otp plugin, which makes it very convenient to have PPP and OpenVPN running on the same machine and using the same secrets file. The secrets file has the following layout:
 
     # user server type:hash:encoding:key:pin:udid client
     # where type is totp, totp-60-6 or motp
@@ -55,7 +60,7 @@ The otp-secrets file format is exactly the same as for ppp-otp plugin which make
     #       encoding is base32, hex or text
     #       key is your key in encoding format
     #       pin is a 4-6 digit pin
-    #       udid is used in motp mode
+    #       udid is used only in motp mode and ignored in totp mode
     #
     # use sha1/base32 for Google Authenticator
     bob otp totp:sha1:base32:K7BYLIU5D2V33X6S:1234:xxx *
@@ -102,6 +107,5 @@ Also, check that /etc/ppp/otp-secrets file:
  - has UNIX style line separator (new line only without CR)
 
 
-Inspired by ppp-otp plugin written by GitHub user kolbyjack
-This plugin written by Evgeny Gridasov (evgeny.gridasov@gmail.com)
+Inspired by ppp-otp plugin written by GitHub user kolbyjack. This plugin written by Evgeny Gridasov (evgeny.gridasov@gmail.com)
 
