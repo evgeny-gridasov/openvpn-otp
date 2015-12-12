@@ -443,37 +443,37 @@ openvpn_plugin_open_v1 (unsigned int *type_mask, const char *argv[], const char 
   if (cfg_otp_secrets != NULL) {
      otp_secrets = strdup(cfg_otp_secrets);
   }
-  LOG("OTP secrets: %s\n", otp_secrets);
+  LOG("OTP-AUTH: otp_secrets=%s\n", otp_secrets);
 
   const char * cfg_otp_slop = get_env("otp_slop", argv);
   if (cfg_otp_slop != NULL) {
      otp_slop = atoi(cfg_otp_slop);
   }
-  LOG("OTP otp_slop: %i\n", otp_slop);
+  LOG("OTP-AUTH: otp_slop=%i\n", otp_slop);
 
   const char * cfg_totp_t0 = get_env("totp_t0", argv);
   if (cfg_totp_t0 != NULL) {
      totp_t0 = atoi(cfg_totp_t0);
   }
-  LOG("OTP totp_t0: %i\n", totp_t0);
+  LOG("OTP-AUTH: totp_t0=%i\n", totp_t0);
 
   const char * cfg_totp_step= get_env("totp_step", argv);
   if (cfg_totp_step != NULL) {
      totp_step = atoi(cfg_totp_step);
   }
-  LOG("OTP totp_step: %i\n", totp_step);
+  LOG("OTP-AUTH: totp_step=%i\n", totp_step);
 
   const char * cfg_totp_digits = get_env("totp_digits", argv);
   if (cfg_totp_digits != NULL) {
      totp_digits = atoi(cfg_totp_digits);
   }
-  LOG("OTP totp_digits: %i\n", totp_digits);
+  LOG("OTP-AUTH: totp_digits=%i\n", totp_digits);
 
   const char * cfg_motp_step = get_env("motp_step", argv);
   if (cfg_motp_step != NULL) {
      motp_step = atoi(cfg_motp_step);
   }
-  LOG("OTP motp_step: %i\n", motp_step);
+  LOG("OTP-AUTH: motp_step=%i\n", motp_step);
 
 
   return (openvpn_plugin_handle_t) otp_secrets;
