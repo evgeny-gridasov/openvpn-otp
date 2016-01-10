@@ -345,6 +345,38 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
                 }
             }
         }
+        else if (!strncasecmp("hotp", otp_params.method, 4)) {
+            HMAC_CTX hmac;
+            const uint8_t *otp_bytes;
+            uint32_t otp, divisor = 1;
+            int tdigits = totp_digits;
+
+            T = 5; /* We MUST need to read T from an external file */
+
+            for (i = 0; i < tdigits; ++i) {
+                divisor *= 10;
+            }
+
+            Tn = htobe64(T);
+
+            HMAC_CTX_init(&hmac);
+            HMAC_Init(&hmac, otp_key, key_len, otp_digest);
+            HMAC_Update(&hmac, (uint8_t *)&Tn, sizeof(Tn));
+            HMAC_Final(&hmac, mac, &maclen);
+
+            otp_bytes = mac + (mac[maclen - 1] & 0x0f);
+            otp = ((otp_bytes[0] & 0x7f) << 24) | (otp_bytes[1] << 16) |
+                (otp_bytes[2] << 8) | otp_bytes[3];
+            otp %= divisor;
+
+            snprintf(secret, sizeof(secret), "%s%0*u", otp_params.pin, tdigits, otp);
+            LOG("Computed htop : %s\n", secret);
+            if (vpn_username && !strcmp (vpn_username, user_entry.name)
+                && vpn_secret && !strcmp (vpn_secret, secret)) {
+                ok = 1;
+                /* Identification succeeded. We MUST decrement the stored counter */
+            }
+        }
         else if (!strcasecmp("motp", otp_params.method)) {
             char buf[64];
             int n;
