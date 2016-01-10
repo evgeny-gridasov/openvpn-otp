@@ -248,7 +248,7 @@ hotp_read_counter(const void * otp_key){
     SHA1(otp_key, sizeof(otp_key), hash);
 
     for (i = 0; i < 20; i++) {
-        sprintf(&hexdigest[i*2], "%02X", hash[i]);
+        sprintf(&hexdigest[i*2], "%02x", hash[i]);
     }
     snprintf(path, sizeof(path), "%s%s", hotp_counters, hexdigest);
     /* Find matching SHA1*/
