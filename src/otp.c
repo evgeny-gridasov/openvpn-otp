@@ -286,20 +286,20 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
         const void * otp_key;
     
         if (!strcasecmp(otp_params.encoding, "base32")) {
-            key_len = base32_decode((uint8_t *) otp_params.key, decoded_secret, sizeof(decoded_secret)); 
+            key_len = base32_decode((uint8_t *) otp_params.key, decoded_secret, sizeof(decoded_secret));
             otp_key = decoded_secret;
         } else
-            if (!strcasecmp(otp_params.encoding, "hex")) {
-                key_len = hex_decode(otp_params.key, decoded_secret, sizeof(decoded_secret));
-                otp_key = decoded_secret;
-            } else
-                if (!strcasecmp(otp_params.encoding, "text")) {
-                    otp_key = otp_params.key;
-                    key_len = strlen(otp_params.key);
-                } else {
-                    LOG("OTP-AUTH: unknown encoding '%s'\n", otp_params.encoding);
-                    goto done;
-                }
+        if (!strcasecmp(otp_params.encoding, "hex")) {
+            key_len = hex_decode(otp_params.key, decoded_secret, sizeof(decoded_secret));
+            otp_key = decoded_secret;
+        } else
+        if (!strcasecmp(otp_params.encoding, "text")) {
+            otp_key = otp_params.key;
+            key_len = strlen(otp_params.key);
+        } else {
+            LOG("OTP-AUTH: unknown encoding '%s'\n", otp_params.encoding);
+            goto done;
+        }
     
         uint64_t T, Tn;
         uint8_t mac[EVP_MAX_MD_SIZE];
