@@ -245,7 +245,7 @@ hotp_read_counter(const void * otp_key){
     FILE *counter_file;
     int i;
 
-    SHA1(otp_key, sizeof(otp_key), hash);
+    SHA1(otp_key, strlen(otp_key), hash);
 
     for (i = 0; i < 20; i++) {
         sprintf(&hexdigest[i*2], "%02x", hash[i]);
@@ -272,7 +272,7 @@ hotp_set_counter(const void * otp_key, int counter){
     FILE *counter_file;
     int i;
 
-    SHA1(otp_key, sizeof(otp_key), hash);
+    SHA1(otp_key, strlen(otp_key), hash);
 
     for (i = 0; i < 20; i++) {
         sprintf(&hexdigest[i*2], "%02X", hash[i]);
@@ -410,7 +410,7 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
             int tdigits = totp_digits;
             int i = 0;
 
-            T = hotp_read_counter(otp_key);
+            T = hotp_read_counter(otp_params.key);
 
             for (i = 0; i < tdigits; ++i) {
                 divisor *= 10;
@@ -433,7 +433,7 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
                 if (vpn_username && !strcmp (vpn_username, user_entry.name)
                     && vpn_secret && !strcmp (vpn_secret, secret)) {
                     ok = 1;
-                    hotp_set_counter(otp_key, T-i-1);
+                    hotp_set_counter(otp_params.key, T-i-1);
                 }
             }
         }
