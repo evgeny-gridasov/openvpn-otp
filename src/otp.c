@@ -11,6 +11,7 @@
 
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
+#include <openssl/sha.h>
 
 #include "openvpn/openvpn-plugin.h"
 
@@ -20,6 +21,7 @@
 
 
 static char *otp_secrets = "/etc/ppp/otp-secrets";
+static char *hotp_counters = "/var/cache/openvpn/hotp-counters/";
 static int otp_slop = 180;
 
 static int totp_t0 = 0;
@@ -231,6 +233,61 @@ split_secret(char *secret, otp_params_t *otp_params)
     return 0;
 }
 
+static int
+hotp_read_counter(const void * otp_key){
+    /* Compute SHA1 for the otp_key */
+    unsigned char hash[SHA_DIGEST_LENGTH];
+    unsigned char hexdigest[SHA_DIGEST_LENGTH*2];
+    char line[256];
+    char path[256];
+    FILE *counter_file;
+    int i;
+
+    SHA1(otp_key, sizeof(otp_key), hash);
+
+    for (i = 0; i < 20; i++) {
+        sprintf(&hexdigest[i*2], "%02X", hash[i]);
+    }
+    snprintf(path, sizeof(path), "%s%s", hotp_counters, hexdigest);
+    LOG("Lookup file %s\n", path);
+    /* Find matching SHA1*/
+    counter_file = fopen(path, "r");
+    if (counter_file != NULL && fgets(line, sizeof(line), counter_file)){
+        fclose(counter_file);
+        return atoi(line);
+    }
+    LOG("Hash not found !\n");
+    /* Read current counter value*/
+    return -1;
+}
+
+static int
+hotp_set_counter(const void * otp_key, int counter){
+    /* Compute SHA1 for the otp_key */
+    unsigned char hash[SHA_DIGEST_LENGTH];
+    unsigned char hexdigest[SHA_DIGEST_LENGTH*2];
+    char line[256];
+    char path[256];
+    FILE *counter_file;
+    int i;
+
+    SHA1(otp_key, sizeof(otp_key), hash);
+
+    for (i = 0; i < 20; i++) {
+        sprintf(&hexdigest[i*2], "%02X", hash[i]);
+    }
+    snprintf(path, sizeof(path), "%s%s", hotp_counters, hexdigest);
+    LOG("Lookup file %s\n", path);
+    /* Find matching SHA1*/
+    counter_file = fopen(path, "w");
+    if (counter_file != NULL && fprintf(counter_file, "%d", counter)){
+        fclose(counter_file);
+        return 0;
+    }
+    LOG("Hash not found !\n");
+    /* Read current counter value*/
+    return -1;
+}
 
 /**
  * Verify user name and password
@@ -284,7 +341,7 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
 
         unsigned int key_len;
         const void * otp_key;
-    
+
         if (!strcasecmp(otp_params.encoding, "base32")) {
             key_len = base32_decode((uint8_t *) otp_params.key, decoded_secret, sizeof(decoded_secret));
             otp_key = decoded_secret;
@@ -351,7 +408,7 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
             uint32_t otp, divisor = 1;
             int tdigits = totp_digits;
 
-            T = 5; /* We MUST need to read T from an external file */
+            T = hotp_read_counter(otp_key);
 
             for (i = 0; i < tdigits; ++i) {
                 divisor *= 10;
@@ -374,7 +431,7 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
             if (vpn_username && !strcmp (vpn_username, user_entry.name)
                 && vpn_secret && !strcmp (vpn_secret, secret)) {
                 ok = 1;
-                /* Identification succeeded. We MUST decrement the stored counter */
+                hotp_set_counter(otp_key, T-1);
             }
         }
         else if (!strcasecmp("motp", otp_params.method)) {
@@ -464,17 +521,23 @@ openvpn_plugin_open_v1 (unsigned int *type_mask, const char *argv[], const char 
    * --auth-user-pass-verify callback.
    */
   *type_mask = OPENVPN_PLUGIN_MASK (OPENVPN_PLUGIN_AUTH_USER_PASS_VERIFY);
- 
+
 
   /*
    * Set up configuration variables
    *
-   */ 
+   */
   const char * cfg_otp_secrets = get_env("otp_secrets", argv);
   if (cfg_otp_secrets != NULL) {
      otp_secrets = strdup(cfg_otp_secrets);
   }
   LOG("OTP-AUTH: otp_secrets=%s\n", otp_secrets);
+
+  const char * cfg_hotp_counter_file = get_env("hotp_counters", argv);
+  if (cfg_otp_secrets != NULL) {
+     hotp_counters = strdup(cfg_hotp_counter_file);
+  }
+  LOG("OTP-AUTH: hotp_counters=%s\n", hotp_counters);
 
   const char * cfg_otp_slop = get_env("otp_slop", argv);
   if (cfg_otp_slop != NULL) {
