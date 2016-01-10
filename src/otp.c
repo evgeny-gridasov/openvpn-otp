@@ -249,14 +249,13 @@ hotp_read_counter(const void * otp_key){
         sprintf(&hexdigest[i*2], "%02X", hash[i]);
     }
     snprintf(path, sizeof(path), "%s%s", hotp_counters, hexdigest);
-    LOG("Lookup file %s\n", path);
     /* Find matching SHA1*/
     counter_file = fopen(path, "r");
     if (counter_file != NULL && fgets(line, sizeof(line), counter_file)){
         fclose(counter_file);
         return atoi(line);
     }
-    LOG("Hash not found !\n");
+    LOG("OTP-AUTH: HTOP Hash %s counter file not found !\n", hexdigest);
     /* Read current counter value*/
     return -1;
 }
@@ -277,14 +276,14 @@ hotp_set_counter(const void * otp_key, int counter){
         sprintf(&hexdigest[i*2], "%02X", hash[i]);
     }
     snprintf(path, sizeof(path), "%s%s", hotp_counters, hexdigest);
-    LOG("Lookup file %s\n", path);
+
     /* Find matching SHA1*/
     counter_file = fopen(path, "w");
     if (counter_file != NULL && fprintf(counter_file, "%d", counter)){
         fclose(counter_file);
         return 0;
     }
-    LOG("Hash not found !\n");
+    LOG("OTP-AUTH: HTOP Hash %s counter file not found !\n", hexdigest);
     /* Read current counter value*/
     return -1;
 }
@@ -427,7 +426,6 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
             otp %= divisor;
 
             snprintf(secret, sizeof(secret), "%s%0*u", otp_params.pin, tdigits, otp);
-            LOG("Computed htop : %s\n", secret);
             if (vpn_username && !strcmp (vpn_username, user_entry.name)
                 && vpn_secret && !strcmp (vpn_secret, secret)) {
                 ok = 1;
