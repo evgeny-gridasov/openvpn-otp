@@ -30,6 +30,8 @@ static int totp_digits = 6;
 
 static int motp_step = 10;
 
+static int hotp_syncwindow = 2;
+
 typedef struct user_entry {
     char name[MAXWORDLEN];
     char server[MAXWORDLEN];
@@ -406,6 +408,7 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
             const uint8_t *otp_bytes;
             uint32_t otp, divisor = 1;
             int tdigits = totp_digits;
+            int i = 0;
 
             T = hotp_read_counter(otp_key);
 
@@ -413,23 +416,25 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
                 divisor *= 10;
             }
 
-            Tn = htobe64(T);
+            for (i = 0; !ok && i <= hotp_syncwindow; i++) {
+                Tn = htobe64(T-i);
 
-            HMAC_CTX_init(&hmac);
-            HMAC_Init(&hmac, otp_key, key_len, otp_digest);
-            HMAC_Update(&hmac, (uint8_t *)&Tn, sizeof(Tn));
-            HMAC_Final(&hmac, mac, &maclen);
+                HMAC_CTX_init(&hmac);
+                HMAC_Init(&hmac, otp_key, key_len, otp_digest);
+                HMAC_Update(&hmac, (uint8_t *)&Tn, sizeof(Tn));
+                HMAC_Final(&hmac, mac, &maclen);
 
-            otp_bytes = mac + (mac[maclen - 1] & 0x0f);
-            otp = ((otp_bytes[0] & 0x7f) << 24) | (otp_bytes[1] << 16) |
-                (otp_bytes[2] << 8) | otp_bytes[3];
-            otp %= divisor;
+                otp_bytes = mac + (mac[maclen - 1] & 0x0f);
+                otp = ((otp_bytes[0] & 0x7f) << 24) | (otp_bytes[1] << 16) |
+                       (otp_bytes[2] << 8) | otp_bytes[3];
+                otp %= divisor;
 
-            snprintf(secret, sizeof(secret), "%s%0*u", otp_params.pin, tdigits, otp);
-            if (vpn_username && !strcmp (vpn_username, user_entry.name)
-                && vpn_secret && !strcmp (vpn_secret, secret)) {
-                ok = 1;
-                hotp_set_counter(otp_key, T-1);
+                snprintf(secret, sizeof(secret), "%s%0*u", otp_params.pin, tdigits, otp);
+                if (vpn_username && !strcmp (vpn_username, user_entry.name)
+                    && vpn_secret && !strcmp (vpn_secret, secret)) {
+                    ok = 1;
+                    hotp_set_counter(otp_key, T-i-1);
+                }
             }
         }
         else if (!strcasecmp("motp", otp_params.method)) {
@@ -567,6 +572,11 @@ openvpn_plugin_open_v1 (unsigned int *type_mask, const char *argv[], const char 
   }
   LOG("OTP-AUTH: motp_step=%i\n", motp_step);
 
+  const char * cfg_hotp_syncwindow = get_env("hotp_syncwindow", argv);
+  if (cfg_hotp_syncwindow != NULL) {
+     hotp_syncwindow = atoi(cfg_hotp_syncwindow);
+  }
+  LOG("OTP-AUTH: hotp_syncwindow=%i\n", hotp_syncwindow);
 
   return (openvpn_plugin_handle_t) otp_secrets;
 }
