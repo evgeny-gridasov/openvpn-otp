@@ -105,7 +105,7 @@ Initiate HOTP counters
 ======================
 
 HOTP counters are stored in files, which resides under the
-``hotp-counters`` directory (``/var/cache/openvpn/hotp-counters/`` by
+``hotp-counters`` directory (``/var/spool/openvpn/hotp-counters/`` by
 default).
 
 For each HOTP entry in the ``otp-secrets`` files, we compute the sha1
@@ -114,13 +114,13 @@ checksum of the secret key, and we use the result as the filename.
 For example, the counter for the
 ``hotp:sha1:base32:GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ::xxx`` entry will
 be read and stored in
-``/var/cache/openvpn/hotp-counters/7C222FB2927D828AF22F592134E8932480637C0D``.
+``/var/spool/openvpn/hotp-counters/7C222FB2927D828AF22F592134E8932480637C0D``.
 
 To allow the usage of one HTOP, the administrator is expected to
 populate the file in which the counter is stored. The following
 command will do the job :
 
-        echo -n 10 > /var/cache/openvpn/hotp-counters/"$(echo -n 'secretkey' | sha1sum | cut -f1 -d ' ')"
+        echo -n 10 > /var/spool/openvpn/hotp-counters/"$(echo -n 'secretkey' | sha1sum | cut -f1 -d ' ')"
 
 
 SELinux

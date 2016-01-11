@@ -21,7 +21,7 @@
 
 
 static char *otp_secrets = "/etc/ppp/otp-secrets";
-static char *hotp_counters = "/var/cache/openvpn/hotp-counters/";
+static char *hotp_counters = "/var/spool/openvpn/hotp-counters/";
 static int otp_slop = 180;
 
 static int totp_t0 = 0;
