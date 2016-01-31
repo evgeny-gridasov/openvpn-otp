@@ -98,10 +98,31 @@ The following exceptions are required for this plugin to work properly on a syst
 #============= openvpn_t ==============
 
 allow openvpn_t auth_home_t:file { unlink open };
-
 allow openvpn_t user_home_dir_t:dir { write remove_name add_name };
-
 allow openvpn_t user_home_dir_t:file { rename write getattr read create unlink open };
+allow openvpn_t pppd_etc_t:dir search;
+allow openvpn_t pppd_etc_t:file { read getattr open };
+```
+
+Alternative SELinux policy reported to work with CentOS:
+```
+$ yum install policycoreutils-python \
+    selinux-policy-devel
+$ cat - <<EOF > openvpn_otp.te
+module openvpn_otp 1.0;
+
+require {
+        type openvpn_t;
+        type pppd_etc_t;
+        class dir { search getattr open };
+        class file { ioctl lock read getattr open };
+}
+
+#============= openvpn_t ==============
+read_files_pattern(openvpn_t, pppd_etc_t, pppd_etc_t)
+EOF
+$ make -f /usr/share/selinux/devel/Makefile openvpn_otp.pp
+$ semodule --install openvpn_otp.pp 
 ```
 
 Troubleshooting
