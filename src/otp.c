@@ -13,6 +13,7 @@
 
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
+#include <openssl/sha.h>
 
 #ifdef HAVE_OPENVPN_OPENVPN_PLUGIN_H
 #include "openvpn/openvpn-plugin.h"
@@ -26,6 +27,7 @@
 
 
 static char *otp_secrets = "/etc/ppp/otp-secrets";
+static char *hotp_counters = "/var/spool/openvpn/hotp-counters/";
 static int otp_slop = 180;
 
 static int totp_t0 = 0;
@@ -33,6 +35,8 @@ static int totp_step = 30;
 static int totp_digits = 6;
 
 static int motp_step = 10;
+
+static int hotp_syncwindow = 2;
 
 typedef struct user_entry {
     char name[MAXWORDLEN];
@@ -237,6 +241,60 @@ split_secret(char *secret, otp_params_t *otp_params)
     return 0;
 }
 
+static int
+hotp_read_counter(const void * otp_key){
+    /* Compute SHA1 for the otp_key */
+    unsigned char hash[SHA_DIGEST_LENGTH];
+    unsigned char hexdigest[SHA_DIGEST_LENGTH*2];
+    char line[256];
+    char path[256];
+    FILE *counter_file;
+    int i;
+
+    SHA1(otp_key, strlen(otp_key), hash);
+
+    for (i = 0; i < 20; i++) {
+        sprintf(&hexdigest[i*2], "%02x", hash[i]);
+    }
+    snprintf(path, sizeof(path), "%s%s", hotp_counters, hexdigest);
+    /* Find matching SHA1*/
+    counter_file = fopen(path, "r");
+    if (counter_file != NULL && fgets(line, sizeof(line), counter_file)){
+        fclose(counter_file);
+        return atoi(line);
+    }
+    LOG("OTP-AUTH: HTOP Hash %s counter file not found !\n", hexdigest);
+    /* Read current counter value*/
+    return -1;
+}
+
+static int
+hotp_set_counter(const void * otp_key, int counter){
+    /* Compute SHA1 for the otp_key */
+    unsigned char hash[SHA_DIGEST_LENGTH];
+    unsigned char hexdigest[SHA_DIGEST_LENGTH*2];
+    char line[256];
+    char path[256];
+    FILE *counter_file;
+    int i;
+
+    SHA1(otp_key, strlen(otp_key), hash);
+
+    for (i = 0; i < 20; i++) {
+        sprintf(&hexdigest[i*2], "%02X", hash[i]);
+    }
+    snprintf(path, sizeof(path), "%s%s", hotp_counters, hexdigest);
+
+    /* Find matching SHA1*/
+    counter_file = fopen(path, "w");
+    if (counter_file != NULL && fprintf(counter_file, "%d", counter)){
+        fclose(counter_file);
+        return 0;
+    }
+    LOG("OTP-AUTH: HTOP Hash %s counter file not found !\n", hexdigest);
+    /* Read current counter value*/
+    return -1;
+}
 
 /**
  * Verify user name and password
@@ -290,7 +348,7 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
 
         unsigned int key_len;
         const void * otp_key;
-    
+
         if (!strcasecmp(otp_params.encoding, "base32")) {
             key_len = base32_decode((uint8_t *) otp_params.key, decoded_secret, sizeof(decoded_secret));
             otp_key = decoded_secret;
@@ -348,6 +406,40 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
                 if (vpn_username && !strcmp (vpn_username, user_entry.name)
                     && vpn_secret && !strcmp (vpn_secret, secret)) {
                     ok = 1;
+                }
+            }
+        }
+        else if (!strncasecmp("hotp", otp_params.method, 4)) {
+            HMAC_CTX hmac;
+            const uint8_t *otp_bytes;
+            uint32_t otp, divisor = 1;
+            int tdigits = totp_digits;
+            int i = 0;
+
+            T = hotp_read_counter(otp_params.key);
+
+            for (i = 0; i < tdigits; ++i) {
+                divisor *= 10;
+            }
+
+            for (i = 0; !ok && i <= hotp_syncwindow; i++) {
+                Tn = htobe64(T-i);
+
+                HMAC_CTX_init(&hmac);
+                HMAC_Init(&hmac, otp_key, key_len, otp_digest);
+                HMAC_Update(&hmac, (uint8_t *)&Tn, sizeof(Tn));
+                HMAC_Final(&hmac, mac, &maclen);
+
+                otp_bytes = mac + (mac[maclen - 1] & 0x0f);
+                otp = ((otp_bytes[0] & 0x7f) << 24) | (otp_bytes[1] << 16) |
+                       (otp_bytes[2] << 8) | otp_bytes[3];
+                otp %= divisor;
+
+                snprintf(secret, sizeof(secret), "%s%0*u", otp_params.pin, tdigits, otp);
+                if (vpn_username && !strcmp (vpn_username, user_entry.name)
+                    && vpn_secret && !strcmp (vpn_secret, secret)) {
+                    ok = 1;
+                    hotp_set_counter(otp_params.key, T-i-1);
                 }
             }
         }
@@ -438,17 +530,23 @@ openvpn_plugin_open_v1 (unsigned int *type_mask, const char *argv[], const char 
    * --auth-user-pass-verify callback.
    */
   *type_mask = OPENVPN_PLUGIN_MASK (OPENVPN_PLUGIN_AUTH_USER_PASS_VERIFY);
- 
+
 
   /*
    * Set up configuration variables
    *
-   */ 
+   */
   const char * cfg_otp_secrets = get_env("otp_secrets", argv);
   if (cfg_otp_secrets != NULL) {
      otp_secrets = strdup(cfg_otp_secrets);
   }
   LOG("OTP-AUTH: otp_secrets=%s\n", otp_secrets);
+
+  const char * cfg_hotp_counter_file = get_env("hotp_counters", argv);
+  if (cfg_otp_secrets != NULL) {
+     hotp_counters = strdup(cfg_hotp_counter_file);
+  }
+  LOG("OTP-AUTH: hotp_counters=%s\n", hotp_counters);
 
   const char * cfg_otp_slop = get_env("otp_slop", argv);
   if (cfg_otp_slop != NULL) {
@@ -480,6 +578,11 @@ openvpn_plugin_open_v1 (unsigned int *type_mask, const char *argv[], const char 
   }
   LOG("OTP-AUTH: motp_step=%i\n", motp_step);
 
+  const char * cfg_hotp_syncwindow = get_env("hotp_syncwindow", argv);
+  if (cfg_hotp_syncwindow != NULL) {
+     hotp_syncwindow = atoi(cfg_hotp_syncwindow);
+  }
+  LOG("OTP-AUTH: hotp_syncwindow=%i\n", hotp_syncwindow);
 
   return (openvpn_plugin_handle_t) otp_secrets;
 }

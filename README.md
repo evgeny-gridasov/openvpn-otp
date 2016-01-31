@@ -1,8 +1,8 @@
 OpenVPN OTP Authentication support
 ==================================
 
-This plug-in adds support for OTP time based tokens for OpenVPN.
-Compatible with Google Authenticator software token, other software and hardware based OTP time tokens.
+This plug-in adds support for time based OTP (totp) and HMAC based OTP (hotp) tokens for OpenVPN.
+Compatible with Google Authenticator software token, other software and hardware based OTP tokens.
 
 Compile and install openvpn-otp.so file to your OpenVPN plugins directory (usually /usr/lib/openvpn or /usr/lib64/openvpn/plugins).
 
@@ -33,6 +33,8 @@ By default the following settings are applied:
     totp_step=30                          # Step value for TOTP (seconds)
     totp_digits=6                         # Number of digits to use from TOTP hash
     motp_step=10                          # Step value for MOTP
+    hotp_syncwindow=2                     # Maximum drifts allowed for clients to resynchronise their tokens counters (see rfc4226#section-7.4)
+    hotp_counters=/var/share/openvpn/hotp-counters/      # HOTP counters directory
 
 Add these variables on the same line as **plugin /.../openvpn-otp.so** line if you want different values.
 If you skip one of the variables, the default value will be applied.
@@ -71,6 +73,9 @@ The otp-secrets file format is exactly the same as for ppp-otp plugin, which mak
     # use sha1/base32 for Google Authenticator without a pin
     john otp totp:sha1:base32:LJYHR64TUI7IL3RD::xxx *
 
+    # use sha1/base32 for HOTP without a pin
+    lucie otp hotp:sha1:base32::MT4GWEZTSRBV2QQC:xxx *
+
     # use totp-60-6 and sha1/hex for hardware based 60 seconds / 6 digits tokens
     mike otp totp-60-6:sha1:hex:5c5a75a87ba1b48cb0b6adfd3b7a5a0e:6543:xxx *
     
@@ -93,6 +98,30 @@ password: 5uP3rH4x0r797104
 username: john
 password: 408923
 ```
+
+
+
+Initiate HOTP counters
+======================
+
+HOTP counters are stored in files, which resides under the
+``hotp-counters`` directory (``/var/spool/openvpn/hotp-counters/`` by
+default).
+
+For each HOTP entry in the ``otp-secrets`` files, we compute the sha1
+checksum of the secret key, and we use the result as the filename.
+
+For example, the counter for the
+``hotp:sha1:base32:GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ::xxx`` entry will
+be read and stored in
+``/var/spool/openvpn/hotp-counters/7C222FB2927D828AF22F592134E8932480637C0D``.
+
+To allow the usage of one HTOP, the administrator is expected to
+populate the file in which the counter is stored. The following
+command will do the job :
+
+        echo -n 10 > /var/spool/openvpn/hotp-counters/"$(echo -n 'secretkey' | sha1sum | cut -f1 -d ' ')"
+
 
 SELinux
 ===============
