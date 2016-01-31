@@ -314,7 +314,7 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
     secrets_file = fopen(otp_secrets, "r");
     if (NULL == secrets_file) {
         LOG("OTP-AUTH: failed to open %s\n", otp_secrets);
-        goto done;
+        return ok;
     }
 
     while (!feof(secrets_file)) {
