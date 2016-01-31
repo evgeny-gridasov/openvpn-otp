@@ -1,3 +1,5 @@
+#include <config.h>
+
 #include <stdio.h>
 #include <stdint.h>
 #include <endian.h>
@@ -12,7 +14,11 @@
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 
+#ifdef HAVE_OPENVPN_OPENVPN_PLUGIN_H
 #include "openvpn/openvpn-plugin.h"
+#elif HAVE_OPENVPN_PLUGIN_H
+#include "openvpn-plugin.h"
+#endif
 
 #include "base32.h"
 #include "hex.h"

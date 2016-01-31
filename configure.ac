@@ -20,7 +20,7 @@ AC_CHECK_HEADERS([inttypes.h netinet/in.h stdint.h string.h], [],
 AC_CHECK_HEADERS([openssl/evp.h openssl/hmac.h], [],
 	[AC_MSG_ERROR([OpenSSL headers missing])])
 AC_CHECK_HEADERS([openvpn/openvpn-plugin.h], [],
-	[AC_MSG_ERROR([OpenVPN headers missing])])
+	[AC_CHECK_HEADERS( [openvpn-plugin.h], [], [AC_MSG_ERROR([OpenVPN headers missing])] ) ])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_UINT32_T
