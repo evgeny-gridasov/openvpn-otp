@@ -242,7 +242,8 @@ split_secret(char *secret, otp_params_t *otp_params)
 }
 
 static int
-hotp_read_counter(const void * otp_key){
+hotp_read_counter(const void * otp_key)
+{
     /* Compute SHA1 for the otp_key */
     unsigned char hash[SHA_DIGEST_LENGTH];
     unsigned char hexdigest[SHA_DIGEST_LENGTH*2];
@@ -259,17 +260,20 @@ hotp_read_counter(const void * otp_key){
     snprintf(path, sizeof(path), "%s%s", hotp_counters, hexdigest);
     /* Find matching SHA1*/
     counter_file = fopen(path, "r");
-    if (counter_file != NULL && fgets(line, sizeof(line), counter_file)){
-        fclose(counter_file);
-        return atoi(line);
+    if (counter_file != NULL) {
+	if (fgets(line, sizeof(line), counter_file)) {
+	  fclose(counter_file);
+	  return atoi(line);
+	}
+	fclose(counter_file);
     }
-    LOG("OTP-AUTH: HTOP Hash %s counter file not found !\n", hexdigest);
-    /* Read current counter value*/
+    LOG("OTP-AUTH: failed to read HOTP counter file %s\n", path);
     return -1;
 }
 
 static int
-hotp_set_counter(const void * otp_key, int counter){
+hotp_set_counter(const void * otp_key, int counter)
+{
     /* Compute SHA1 for the otp_key */
     unsigned char hash[SHA_DIGEST_LENGTH];
     unsigned char hexdigest[SHA_DIGEST_LENGTH*2];
@@ -287,12 +291,14 @@ hotp_set_counter(const void * otp_key, int counter){
 
     /* Find matching SHA1*/
     counter_file = fopen(path, "w");
-    if (counter_file != NULL && fprintf(counter_file, "%d", counter)){
-        fclose(counter_file);
-        return 0;
+    if (counter_file != NULL) {
+	if (fprintf(counter_file, "%d", counter)) {
+	  fclose(counter_file);
+	  return 0;
+	}
+	fclose(counter_file);
     }
-    LOG("OTP-AUTH: HTOP Hash %s counter file not found !\n", hexdigest);
-    /* Read current counter value*/
+    LOG("OTP-AUTH: failed to write HOTP counter file %s\n", path);
     return -1;
 }
 
