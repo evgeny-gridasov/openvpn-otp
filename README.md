@@ -4,7 +4,7 @@ OpenVPN OTP Authentication support
 This plug-in adds support for time based OTP (totp) and HMAC based OTP (hotp) tokens for OpenVPN.
 Compatible with Google Authenticator software token, other software and hardware based OTP tokens.
 
-Compile and install openvpn-otp.so file to your OpenVPN plugins directory (usually /usr/lib/openvpn or /usr/lib64/openvpn/plugins).
+Compile and install ``openvpn-otp.so`` file to your OpenVPN plugins directory (usually ``/usr/lib/openvpn`` or ``/usr/lib64/openvpn/plugins``).
 
 To bootstrap autotools (generate configure and Makefiles):
 
@@ -16,7 +16,7 @@ Build and install with:
     make install
 
 The default install location (PREFIX/LIB/openvpn) can be changed by
-passing the directory with --with-openvpn-plugin-dir to ./configure:
+passing the directory with ``--with-openvpn-plugin-dir`` to ``./configure``:
 
     ./configure --with-openvpn-plugin-dir=/plugin/dir
 
@@ -33,10 +33,10 @@ By default the following settings are applied:
     totp_step=30                          # Step value for TOTP (seconds)
     totp_digits=6                         # Number of digits to use from TOTP hash
     motp_step=10                          # Step value for MOTP
-    hotp_syncwindow=2                     # Maximum drifts allowed for clients to resynchronise their tokens counters (see rfc4226#section-7.4)
-    hotp_counters=/var/share/openvpn/hotp-counters/      # HOTP counters directory
+    hotp_syncwindow=2                     # Maximum drifts allowed for clients to resynchronise their tokens' counters (see rfc4226#section-7.4)
+    hotp_counters=/var/spool/openvpn/hotp-counters/      # HOTP counters directory
 
-Add these variables on the same line as **plugin /.../openvpn-otp.so** line if you want different values.
+Add these variables on the same line as ``plugin /.../openvpn-otp.so`` line if you want different values.
 If you skip one of the variables, the default value will be applied.
 
     # use otp passwords with custom settings
@@ -54,7 +54,7 @@ OpenVPN will re-negotiate username/password details every 3600 seconds by defaul
     # disable username/password renegotiation
     reneg-sec 0
 
-The otp-secrets file format is exactly the same as for ppp-otp plugin, which makes it very convenient to have PPP and OpenVPN running on the same machine and using the same secrets file. The secrets file has the following layout:
+The ``otp-secrets`` file format is exactly the same as for ppp-otp plugin, which makes it very convenient to have PPP and OpenVPN running on the same machine and using the same secrets file. The secrets file has the following layout:
 
     # user server type:hash:encoding:key:pin:udid client
     # where type is totp, totp-60-6 or motp
@@ -82,7 +82,7 @@ The otp-secrets file format is exactly the same as for ppp-otp plugin, which mak
     # use text encoding for clients supporting plain text keys
     jane otp totp:sha1:text:1234567890:9876:xxx *
 
-    # allow multiple tokens for a specific user
+    # allow multiple tokens without a pin for a specific user
     hobbes otp totp:sha1:base32:LJYHR64TUI7IL3RD::xxx *
     hobbes otp totp:sha1:base32:7VXNJAFPYYKO3ILO::xxx *
     
@@ -101,26 +101,26 @@ password: 408923
 
 
 
-Initiate HOTP counters
-======================
+HOTP counters initialisation
+============================
 
-HOTP counters are stored in files, which resides under the
-``hotp-counters`` directory (``/var/spool/openvpn/hotp-counters/`` by
-default).
+HOTP counters are stored in files, which reside under the ``hotp-counters`` directory (``/var/spool/openvpn/hotp-counters/`` by
+default). OpenVPN server process should have enough permissions to read and modify files in that directory.
 
-For each HOTP entry in the ``otp-secrets`` files, we compute the sha1
-checksum of the secret key, and we use the result as the filename.
+For each HOTP entry in the ``otp-secrets`` files, we compute the SHA1
+checksum of the secret key, and use the resulting lower case string as the filename.
 
-For example, the counter for the
-``hotp:sha1:base32:GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ::xxx`` entry will
-be read and stored in
-``/var/spool/openvpn/hotp-counters/7C222FB2927D828AF22F592134E8932480637C0D``.
+For example, the following HOTP entry
+```
+lucie otp hotp:sha1:base32::MT4GWEZTSRBV2QQC:xxx *
+```
+has SHA1(MT4GWEZTSRBV2QQC) = a0b2e3795f7ca9e60183af274a004cdd0ac9276f and the HOTP counter file 
+should be read and stored in ``/var/spool/openvpn/hotp-counters/a0b2e3795f7ca9e60183af274a004cdd0ac9276f``.
 
-To allow the usage of one HTOP, the administrator is expected to
-populate the file in which the counter is stored. The following
-command will do the job :
+The administrator has to create and populate each HOTP counter file with initial value after adding new HOTP records to ``otp-secrets`` file.
+The following command will do the job:
 
-        echo -n 10 > /var/spool/openvpn/hotp-counters/"$(echo -n 'secretkey' | sha1sum | cut -f1 -d ' ')"
+        echo -n 10 > /var/spool/openvpn/hotp-counters/"$(echo -n 'secretkey' | sha1sum | cut -c-40)"
 
 
 SELinux
@@ -162,17 +162,24 @@ Troubleshooting
 ===============
 
 Make sure that time is in sync on the server and on your phone/tablet/other OTP client device.
-You may use oathtool for token verification on your OpenVPN server:
+You may use ``oathtool`` for token verification on your OpenVPN server:
 
+    # for TOTP, type: 
     $ oathtool --totp -b K7BYLIU5D2V33X6S
     995277
+    
+    # for HOTP, type:
+    $ oathtool -b -c 5 NFIJ5GSNU574OU6B
+    214648
 
 The tokens should be identical on your OTP client and OpenVPN server.
 
-Also, check that /etc/ppp/otp-secrets file:
+Check that ``/etc/ppp/otp-secrets file``:
  - is accessible by OpenVPN
  - has spaces as field separators
  - has UNIX style line separator (new line only without CR)
+
+Make sure that OpenVPN server process can read and modify files in ``/var/spool/openvpn/hotp-counters/`` directory.
 
 
 Inspired by ppp-otp plugin written by GitHub user kolbyjack. This plugin written by Evgeny Gridasov (evgeny.gridasov@gmail.com)
