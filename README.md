@@ -76,6 +76,10 @@ The otp-secrets file format is exactly the same as for ppp-otp plugin, which mak
     
     # use text encoding for clients supporting plain text keys
     jane otp totp:sha1:text:1234567890:9876:xxx *
+
+    # allow multiple tokens for a specific user
+    hobbes otp totp:sha1:base32:LJYHR64TUI7IL3RD::xxx *
+    hobbes otp totp:sha1:base32:7VXNJAFPYYKO3ILO::xxx *
     
 When users vpn in, they will need to provide their username and pin+current OTP number from the OTP token. Examples for users bob, alice and john:
 

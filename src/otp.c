@@ -268,129 +268,128 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
             continue;
         }
 
-        break;
-    }
-
-    /* Handle non-otp passwords before trying to parse out otp fields */
-    if (!strncasecmp(user_entry.secret, "plain:", sizeof("plain:") - 1)) {
-        const char *password = user_entry.secret + sizeof("plain:") - 1;
-        if (vpn_username && !strcmp (vpn_username, user_entry.name)
-            && vpn_secret && password && !strcmp (vpn_secret, password)) {
+        /* Handle non-otp passwords before trying to parse out otp fields */
+        if (!strncasecmp(user_entry.secret, "plain:", sizeof("plain:") - 1)) {
+            const char *password = user_entry.secret + sizeof("plain:") - 1;
+            if (vpn_username && !strcmp (vpn_username, user_entry.name)
+                && vpn_secret && password && !strcmp (vpn_secret, password)) {
         	ok = 1;
+            }
+            goto done;
         }
-        goto done;
-    }
 
-    if (split_secret(user_entry.secret, &otp_params)) {
-        goto done;
-    }
+        if (split_secret(user_entry.secret, &otp_params)) {
+            goto done;
+        }
 
-    otp_digest = EVP_get_digestbyname(otp_params.hash);
-    if (!otp_digest) {
-        LOG("OTP-AUTH: unknown digest '%s'\n", otp_params.hash);
-        goto done;
-    }
+        otp_digest = EVP_get_digestbyname(otp_params.hash);
+        if (!otp_digest) {
+            LOG("OTP-AUTH: unknown digest '%s'\n", otp_params.hash);
+            goto done;
+        }
 
-    unsigned int key_len;
-    const void * otp_key;
+        unsigned int key_len;
+        const void * otp_key;
     
-    if (!strcasecmp(otp_params.encoding, "base32")) {
-        key_len = base32_decode((uint8_t *) otp_params.key, decoded_secret, sizeof(decoded_secret)); 
-        otp_key = decoded_secret;
-    } else
-    if (!strcasecmp(otp_params.encoding, "hex")) {
-	key_len = hex_decode(otp_params.key, decoded_secret, sizeof(decoded_secret));
-	otp_key = decoded_secret;
-    } else
-    if (!strcasecmp(otp_params.encoding, "text")) {
-        otp_key = otp_params.key;
-        key_len = strlen(otp_params.key);
-    } else {
-        LOG("OTP-AUTH: unknown encoding '%s'\n", otp_params.encoding);
-        goto done;
-    }
+        if (!strcasecmp(otp_params.encoding, "base32")) {
+            key_len = base32_decode((uint8_t *) otp_params.key, decoded_secret, sizeof(decoded_secret));
+            otp_key = decoded_secret;
+        } else
+        if (!strcasecmp(otp_params.encoding, "hex")) {
+            key_len = hex_decode(otp_params.key, decoded_secret, sizeof(decoded_secret));
+            otp_key = decoded_secret;
+        } else
+        if (!strcasecmp(otp_params.encoding, "text")) {
+            otp_key = otp_params.key;
+            key_len = strlen(otp_params.key);
+        } else {
+            LOG("OTP-AUTH: unknown encoding '%s'\n", otp_params.encoding);
+            goto done;
+        }
     
-    uint64_t T, Tn;
-    uint8_t mac[EVP_MAX_MD_SIZE];
-    unsigned maclen;
+        uint64_t T, Tn;
+        uint8_t mac[EVP_MAX_MD_SIZE];
+        unsigned maclen;
 
-    if (!strncasecmp("totp", otp_params.method, 4)) {
-        HMAC_CTX hmac;
-        const uint8_t *otp_bytes;
-        uint32_t otp, divisor = 1;
-        int tstep = totp_step;
-        int tdigits = totp_digits;
-        if (!strcasecmp("totp-60-6", otp_params.method)) {
-            tstep = 60;
-            tdigits = 6;
-        }
-        int range = otp_slop / tstep;
+        if (!strncasecmp("totp", otp_params.method, 4)) {
+            HMAC_CTX hmac;
+            const uint8_t *otp_bytes;
+            uint32_t otp, divisor = 1;
+            int tstep = totp_step;
+            int tdigits = totp_digits;
+            if (!strcasecmp("totp-60-6", otp_params.method)) {
+                tstep = 60;
+                tdigits = 6;
+            }
+            int range = otp_slop / tstep;
 
 
-        T = (time(NULL) - totp_t0) / tstep;
+            T = (time(NULL) - totp_t0) / tstep;
 
-        for (i = 0; i < tdigits; ++i) {
-            divisor *= 10;
-        }
+            for (i = 0; i < tdigits; ++i) {
+                divisor *= 10;
+            }
 
-        for (i = -range; !ok && i <= range; ++i) {
-            Tn = htobe64(T + i);
+            for (i = -range; !ok && i <= range; ++i) {
+                Tn = htobe64(T + i);
 
-            HMAC_CTX_init(&hmac);
-            HMAC_Init(&hmac, otp_key, key_len, otp_digest);
-            HMAC_Update(&hmac, (uint8_t *)&Tn, sizeof(Tn));
-            HMAC_Final(&hmac, mac, &maclen);
+                HMAC_CTX_init(&hmac);
+                HMAC_Init(&hmac, otp_key, key_len, otp_digest);
+                HMAC_Update(&hmac, (uint8_t *)&Tn, sizeof(Tn));
+                HMAC_Final(&hmac, mac, &maclen);
 
-            otp_bytes = mac + (mac[maclen - 1] & 0x0f);
-            otp = ((otp_bytes[0] & 0x7f) << 24) | (otp_bytes[1] << 16) |
-                  (otp_bytes[2] << 8) | otp_bytes[3];
-            otp %= divisor;
+                otp_bytes = mac + (mac[maclen - 1] & 0x0f);
+                otp = ((otp_bytes[0] & 0x7f) << 24) | (otp_bytes[1] << 16) |
+                    (otp_bytes[2] << 8) | otp_bytes[3];
+                otp %= divisor;
 
-            snprintf(secret, sizeof(secret), "%s%0*u", otp_params.pin, tdigits, otp);
+                snprintf(secret, sizeof(secret), "%s%0*u", otp_params.pin, tdigits, otp);
 
-            if (vpn_username && !strcmp (vpn_username, user_entry.name)
-                && vpn_secret && !strcmp (vpn_secret, secret)) {
-            	ok = 1;
+                if (vpn_username && !strcmp (vpn_username, user_entry.name)
+                    && vpn_secret && !strcmp (vpn_secret, secret)) {
+                    ok = 1;
+                }
             }
         }
-    }
-    else if (!strcasecmp("motp", otp_params.method)) {
-        char buf[64];
-        int n;
-        int range = otp_slop / motp_step;
+        else if (!strcasecmp("motp", otp_params.method)) {
+            char buf[64];
+            int n;
+            int range = otp_slop / motp_step;
 
-        T = time(NULL) / motp_step;
+            T = time(NULL) / motp_step;
 
-        for (i = -range; !ok && i <= range; ++i) {
-            EVP_MD_CTX ctx;
-            EVP_MD_CTX_init(&ctx);
-            EVP_DigestInit_ex(&ctx, otp_digest, NULL);
-            n = sprintf(buf, "%" PRIu64, T + i);
-            EVP_DigestUpdate(&ctx, buf, n);
-            EVP_DigestUpdate(&ctx, otp_key, key_len);
-            EVP_DigestUpdate(&ctx, otp_params.pin, strlen(otp_params.pin));
-            if (otp_params.udid) {
-                int udid_len = strlen(otp_params.udid);
-                EVP_DigestUpdate(&ctx, otp_params.udid, udid_len);
-            }
-            EVP_DigestFinal_ex(&ctx, mac, &maclen);
-            EVP_MD_CTX_cleanup(&ctx);
+            for (i = -range; !ok && i <= range; ++i) {
+                EVP_MD_CTX ctx;
+                EVP_MD_CTX_init(&ctx);
+                EVP_DigestInit_ex(&ctx, otp_digest, NULL);
+                n = sprintf(buf, "%" PRIu64, T + i);
+                EVP_DigestUpdate(&ctx, buf, n);
+                EVP_DigestUpdate(&ctx, otp_key, key_len);
+                EVP_DigestUpdate(&ctx, otp_params.pin, strlen(otp_params.pin));
+                if (otp_params.udid) {
+                    int udid_len = strlen(otp_params.udid);
+                    EVP_DigestUpdate(&ctx, otp_params.udid, udid_len);
+                }
+                EVP_DigestFinal_ex(&ctx, mac, &maclen);
+                EVP_MD_CTX_cleanup(&ctx);
 
-            snprintf(secret, sizeof(secret),
-                    "%02x%02x%02x", mac[0], mac[1], mac[2]);
+                snprintf(secret, sizeof(secret),
+                         "%02x%02x%02x", mac[0], mac[1], mac[2]);
 
-            if (vpn_username && !strcmp (vpn_username, user_entry.name)
-                && vpn_secret && !strcmp (vpn_secret, secret)) {
-            	ok = 1;
+                if (vpn_username && !strcmp (vpn_username, user_entry.name)
+                    && vpn_secret && !strcmp (vpn_secret, secret)) {
+                    ok = 1;
+                }
             }
         }
-    }
-    else {
-        LOG("OTP-AUTH: unknown OTP method %s\n", otp_params.method);
-    }
+        else {
+            LOG("OTP-AUTH: unknown OTP method %s\n", otp_params.method);
+        }
 
-done:
-    memset(secret, 0, sizeof(secret));
+    done:
+        memset(secret, 0, sizeof(secret));
+
+    }
 
     if (NULL != secrets_file) {
         fclose(secrets_file);
