@@ -549,7 +549,7 @@ openvpn_plugin_open_v1 (unsigned int *type_mask, const char *argv[], const char 
   LOG("OTP-AUTH: otp_secrets=%s\n", otp_secrets);
 
   const char * cfg_hotp_counter_file = get_env("hotp_counters", argv);
-  if (cfg_otp_secrets != NULL) {
+  if (cfg_hotp_counter_file != NULL) {
      hotp_counters = strdup(cfg_hotp_counter_file);
   }
   LOG("OTP-AUTH: hotp_counters=%s\n", hotp_counters);
