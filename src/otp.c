@@ -429,7 +429,7 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
             }
 
             for (i = 0; !ok && i <= hotp_syncwindow; i++) {
-                Tn = htobe64(T-i);
+                Tn = htobe64(T+i);
 
                 HMAC_CTX_init(&hmac);
                 HMAC_Init(&hmac, otp_key, key_len, otp_digest);
@@ -445,7 +445,7 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
                 if (vpn_username && !strcmp (vpn_username, user_entry.name)
                     && vpn_secret && !strcmp (vpn_secret, secret)) {
                     ok = 1;
-                    hotp_set_counter(otp_params.key, T-i-1);
+                    hotp_set_counter(otp_params.key, T+i+1);
                 }
             }
         }

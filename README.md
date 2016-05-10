@@ -120,7 +120,7 @@ should be read and stored in ``/var/spool/openvpn/hotp-counters/a0b2e3795f7ca9e6
 The administrator has to create and populate each HOTP counter file with initial value after adding new HOTP records to ``otp-secrets`` file.
 The following command will do the job:
 
-        echo -n 10 > /var/spool/openvpn/hotp-counters/"$(echo -n 'secretkey' | sha1sum | cut -c-40)"
+        echo -n 0 > /var/spool/openvpn/hotp-counters/"$(echo -n 'secretkey' | sha1sum | cut -c-40)"
 
 
 SELinux
