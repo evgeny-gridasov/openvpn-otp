@@ -22,7 +22,7 @@ passing the directory with ``--with-openvpn-plugin-dir`` to ``./configure``:
 
 Add the following lines to your OpenVPN server configuration file to deploy OTP plugin with default settings:
 
-    # use otp passwords
+    # use otp passwords with default settings
     plugin /usr/lib64/openvpn/plugins/openvpn-otp.so
 
 By default the following settings are applied:
@@ -30,7 +30,7 @@ By default the following settings are applied:
     otp_secrets=/etc/ppp/otp-secrets      # OTP secret file
     otp_slop=180                          # Maximum allowed clock slop (seconds)
     totp_t0=0                             # T0 value for TOTP (time drift in seconds)
-    totp_step=30                          # Step value for TOTP (seconds)
+    totp_step=30                          # Step value for TOTP (seconds), should be 30 seconds for soft tokens and 60 seconds for hardware tokens
     totp_digits=6                         # Number of digits to use from TOTP hash
     motp_step=10                          # Step value for MOTP
     hotp_syncwindow=2                     # Maximum drifts allowed for clients to resynchronise their tokens' counters (see rfc4226#section-7.4)
@@ -40,9 +40,11 @@ Add these variables on the same line as ``plugin /.../openvpn-otp.so`` line if y
 If you skip one of the variables, the default value will be applied.
 
     # use otp passwords with custom settings
-    plugin /usr/lib64/openvpn/plugins/openvpn-otp.so otp_secrets=/etc/my_otp_secret_file otp_slop=300 totp_t0=2 totp_step=60 totp_digits=8 motp_step=10
+    plugin /usr/lib64/openvpn/plugins/openvpn-otp.so otp_secrets=/etc/my_otp_secret_file otp_slop=300 totp_t0=2 totp_step=30 totp_digits=8 motp_step=10
 
-Add the following lines to your clients' configs:
+It is important to mention that totp_step has to be same on both, the client and server, because it is used for calculation of current token value.
+
+Add the following lines to your OpenVPN clients' configuration files:
 
     # use username/password authentication
     auth-user-pass
