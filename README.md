@@ -35,6 +35,7 @@ By default the following settings are applied:
     motp_step=10                          # Step value for MOTP
     hotp_syncwindow=2                     # Maximum drifts allowed for clients to resynchronise their tokens' counters (see rfc4226#section-7.4)
     hotp_counters=/var/spool/openvpn/hotp-counters/      # HOTP counters directory
+    debug=0                               # Debug mode: 0=disabled, 1=enabled
 
 Add these variables on the same line as ``plugin /.../openvpn-otp.so`` line if you want different values.
 If you skip one of the variables, the default value will be applied.
@@ -175,8 +176,12 @@ You may use ``oathtool`` for token verification on your OpenVPN server:
     214648
 
 The tokens should be identical on your OTP client and OpenVPN server.
+You may also enable debug mode to log user-provided and expected credentials (do not use in production environments):
 
-Check that ``/etc/ppp/otp-secrets file``:
+    # use otp passwords with custom settings
+    plugin /usr/lib64/openvpn/plugins/openvpn-otp.so debug=1 [...other settings...]
+
+Also check that ``/etc/ppp/otp-secrets file``:
  - is accessible by OpenVPN
  - has spaces as field separators
  - has UNIX style line separator (new line only without CR)

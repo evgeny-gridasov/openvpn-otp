@@ -38,6 +38,8 @@ static int motp_step = 10;
 
 static int hotp_syncwindow = 2;
 
+static int debug = 0;
+
 typedef struct user_entry {
     char name[MAXWORDLEN];
     char server[MAXWORDLEN];
@@ -56,6 +58,8 @@ typedef struct otp_params {
 
 #define LOG(format, ...) logmessage(format, ## __VA_ARGS__)
 
+#define DEBUG(format, ...) logdebug(format, ## __VA_ARGS__)
+
 static void logmessage(const char *format, ...)
 {
     va_list va;
@@ -63,6 +67,17 @@ static void logmessage(const char *format, ...)
     va_start(va, format);
     vfprintf(stderr, format, va);
     va_end(va);
+}
+
+static void logdebug(const char *format, ...)
+{
+    if (debug > 0) {
+        va_list va;
+
+        va_start(va, format);
+        vfprintf(stderr, format, va);
+        va_end(va);
+    }
 }
 
 #ifndef htobe64
@@ -259,15 +274,18 @@ hotp_read_counter(const void * otp_key)
     }
     snprintf(path, sizeof(path), "%s%s", hotp_counters, hexdigest);
     /* Find matching SHA1*/
+    DEBUG("OTP-AUTH: opening HOTP counter file '%s'\n", path);
     counter_file = fopen(path, "r");
     if (counter_file != NULL) {
-	if (fgets(line, sizeof(line), counter_file)) {
-	  fclose(counter_file);
-	  return atoi(line);
-	}
-	fclose(counter_file);
+        if (fgets(line, sizeof(line), counter_file)) {
+          fclose(counter_file);
+          int ret = atoi(line);
+          DEBUG("OTP-AUTH: current HOTP value is %i\n", ret);
+          return atoi(line);
+        }
+        fclose(counter_file);
     }
-    LOG("OTP-AUTH: failed to read HOTP counter file %s\n", path);
+    LOG("OTP-AUTH: failed to read HOTP counter file '%s'\n", path);
     return -1;
 }
 
@@ -290,15 +308,18 @@ hotp_set_counter(const void * otp_key, int counter)
     snprintf(path, sizeof(path), "%s%s", hotp_counters, hexdigest);
 
     /* Find matching SHA1*/
+    DEBUG("OTP-AUTH: opening HOTP counter file '%s' for writing\n", path);
     counter_file = fopen(path, "w");
     if (counter_file != NULL) {
-	if (fprintf(counter_file, "%d", counter)) {
-	  fclose(counter_file);
-	  return 0;
-	}
-	fclose(counter_file);
+        DEBUG("OTP-AUTH: setting HOTP counter value to %i\n", counter);
+        if (fprintf(counter_file, "%d", counter)) {
+          fclose(counter_file);
+          DEBUG("OTP-AUTH: HOTP counter update successful\n", counter);
+          return 0;
+        }
+        fclose(counter_file);
     }
-    LOG("OTP-AUTH: failed to write HOTP counter file %s\n", path);
+    LOG("OTP-AUTH: failed to write HOTP counter file '%s'\n", path);
     return -1;
 }
 
@@ -323,6 +344,8 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
         return ok;
     }
 
+    DEBUG("OTP-AUTH: trying to authenticate username '%s'\n", vpn_username);
+
     while (!feof(secrets_file)) {
         if (read_user_entry(secrets_file, &user_entry)) {
             continue;
@@ -332,12 +355,14 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
             continue;
         }
 
+        DEBUG("OTP-AUTH: username '%s' exists in '%s'\n", vpn_username, otp_secrets);
+
         /* Handle non-otp passwords before trying to parse out otp fields */
         if (!strncasecmp(user_entry.secret, "plain:", sizeof("plain:") - 1)) {
             const char *password = user_entry.secret + sizeof("plain:") - 1;
             if (vpn_username && !strcmp (vpn_username, user_entry.name)
                 && vpn_secret && password && !strcmp (vpn_secret, password)) {
-        	ok = 1;
+                ok = 1;
             }
             goto done;
         }
@@ -371,7 +396,7 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
             goto done;
         }
     
-        uint64_t T, Tn;
+        uint64_t T, Tn, Ti;
         uint8_t mac[EVP_MAX_MD_SIZE];
         unsigned maclen;
 
@@ -409,9 +434,12 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
 
                 snprintf(secret, sizeof(secret), "%s%0*u", otp_params.pin, tdigits, otp);
 
+                DEBUG("OTP-AUTH: trying method='%s', client_username='%s', client_secret='%s', server_username='%s', server_secret='%s'\n", otp_params.method, vpn_username, vpn_secret, user_entry.name, secret);
+
                 if (vpn_username && !strcmp (vpn_username, user_entry.name)
                     && vpn_secret && !strcmp (vpn_secret, secret)) {
                     ok = 1;
+                    DEBUG("OTP-AUTH: auth ok for method='%s', client_username='%s', client_secret='%s'\n", otp_params.method, vpn_username, vpn_secret);
                 }
             }
         }
@@ -422,31 +450,40 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
             int tdigits = totp_digits;
             int i = 0;
 
-            T = hotp_read_counter(otp_params.key);
+            i = hotp_read_counter(otp_params.key);
 
-            for (i = 0; i < tdigits; ++i) {
-                divisor *= 10;
-            }
+            if (i >= 0) {
+              T = i;
 
-            for (i = 0; !ok && i <= hotp_syncwindow; i++) {
-                Tn = htobe64(T+i);
+              for (i = 0; i < tdigits; ++i) {
+                  divisor *= 10;
+              }
 
-                HMAC_CTX_init(&hmac);
-                HMAC_Init(&hmac, otp_key, key_len, otp_digest);
-                HMAC_Update(&hmac, (uint8_t *)&Tn, sizeof(Tn));
-                HMAC_Final(&hmac, mac, &maclen);
+              for (i = 0; !ok && i <= hotp_syncwindow; i++) {
+                  Ti = T+i;
+                  Tn = htobe64(Ti);
 
-                otp_bytes = mac + (mac[maclen - 1] & 0x0f);
-                otp = ((otp_bytes[0] & 0x7f) << 24) | (otp_bytes[1] << 16) |
-                       (otp_bytes[2] << 8) | otp_bytes[3];
-                otp %= divisor;
+                  HMAC_CTX_init(&hmac);
+                  HMAC_Init(&hmac, otp_key, key_len, otp_digest);
+                  HMAC_Update(&hmac, (uint8_t *)&Tn, sizeof(Tn));
+                  HMAC_Final(&hmac, mac, &maclen);
 
-                snprintf(secret, sizeof(secret), "%s%0*u", otp_params.pin, tdigits, otp);
-                if (vpn_username && !strcmp (vpn_username, user_entry.name)
-                    && vpn_secret && !strcmp (vpn_secret, secret)) {
-                    ok = 1;
-                    hotp_set_counter(otp_params.key, T+i+1);
-                }
+                  otp_bytes = mac + (mac[maclen - 1] & 0x0f);
+                  otp = ((otp_bytes[0] & 0x7f) << 24) | (otp_bytes[1] << 16) |
+                         (otp_bytes[2] << 8) | otp_bytes[3];
+                  otp %= divisor;
+
+                  snprintf(secret, sizeof(secret), "%s%0*u", otp_params.pin, tdigits, otp);
+
+                  DEBUG("OTP-AUTH: trying method='%s', client_username='%s', client_secret='%s', server_username='%s', server_secret='%s', hotp=%"PRIu64"\n", otp_params.method, vpn_username, vpn_secret, user_entry.name, secret, Ti);
+
+                  if (vpn_username && !strcmp (vpn_username, user_entry.name)
+                      && vpn_secret && !strcmp (vpn_secret, secret)) {
+                      ok = 1;
+                      DEBUG("OTP-AUTH: auth ok for method='%s', client_username='%s', client_secret='%s', hotp=%"PRIu64"\n", otp_params.method, vpn_username, vpn_secret, Ti);
+                      hotp_set_counter(otp_params.key, Ti+1);
+                  }
+              }
             }
         }
         else if (!strcasecmp("motp", otp_params.method)) {
@@ -474,9 +511,12 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
                 snprintf(secret, sizeof(secret),
                          "%02x%02x%02x", mac[0], mac[1], mac[2]);
 
+                DEBUG("OTP-AUTH: trying method='%s', client_username='%s', client_secret='%s', server_username='%s', server_secret='%s'\n", otp_params.method, vpn_username, vpn_secret, user_entry.name, secret);
+
                 if (vpn_username && !strcmp (vpn_username, user_entry.name)
                     && vpn_secret && !strcmp (vpn_secret, secret)) {
                     ok = 1;
+                    DEBUG("OTP-AUTH: auth ok for method='%s', client_username='%s', client_secret='%s'\n", otp_params.method, vpn_username, vpn_secret);
                 }
             }
         }
@@ -509,14 +549,14 @@ static const char * get_env (const char *name, const char *envp[])
       int i;
       const int namelen = strlen (name);
       for (i = 0; envp[i]; ++i)
-	{
-	  if (!strncmp (envp[i], name, namelen))
-	    {
-	      const char *cp = envp[i] + namelen;
-	      if (*cp == '=')
-		return cp + 1;
-	    }
-	}
+        {
+          if (!strncmp (envp[i], name, namelen))
+            {
+              const char *cp = envp[i] + namelen;
+              if (*cp == '=')
+                return cp + 1;
+            }
+        }
     }
   return NULL;
 }
@@ -589,6 +629,13 @@ openvpn_plugin_open_v1 (unsigned int *type_mask, const char *argv[], const char 
      hotp_syncwindow = atoi(cfg_hotp_syncwindow);
   }
   LOG("OTP-AUTH: hotp_syncwindow=%i\n", hotp_syncwindow);
+
+  const char * cfg_debug = get_env("debug", argv);
+  if (cfg_debug != NULL) {
+       debug = atoi(cfg_debug);
+  }
+  LOG("OTP-AUTH: debug=%i\n", debug);
+  DEBUG("OTP_AUTH: debug mode has been enabled\n");
 
   return (openvpn_plugin_handle_t) otp_secrets;
 }
