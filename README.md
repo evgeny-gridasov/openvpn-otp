@@ -6,6 +6,11 @@ Compatible with Google Authenticator software token, other software and hardware
 
 Compile and install ``openvpn-otp.so`` file to your OpenVPN plugins directory (usually ``/usr/lib/openvpn`` or ``/usr/lib64/openvpn/plugins``).
 
+Be sure you've installed the following packages first:
+* `autoconf`
+* `libtool`
+* `libssl-dev`/`openssl-devel`
+
 To bootstrap autotools (generate configure and Makefiles):
 
     ./autogen.sh
