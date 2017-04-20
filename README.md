@@ -25,10 +25,15 @@ passing the directory with ``--with-openvpn-plugin-dir`` to ``./configure``:
 
     ./configure --with-openvpn-plugin-dir=/plugin/dir
 
-Add the following lines to your OpenVPN server configuration file to deploy OTP plugin with default settings:
+Add the following lines to your OpenVPN server configuration file to deploy OTP plugin with default settings. For OpenVPN <=2.3.x, use:
 
-    # use otp passwords with default settings
+    # use otp passwords with default settings (OpenVPN<=2.3.x syntax)
     plugin /usr/lib64/openvpn/plugins/openvpn-otp.so
+
+For OpenVPN 2.4, use double quotes:
+
+    # use otp passwords with default settings (OpenVPN>=2.4 syntax)
+    plugin "/usr/lib64/openvpn/plugins/openvpn-otp.so"
 
 By default the following settings are applied:
 
@@ -43,10 +48,16 @@ By default the following settings are applied:
     debug=0                               # Debug mode: 0=disabled, 1=enabled
 
 Add these variables on the same line as ``plugin /.../openvpn-otp.so`` line if you want different values.
-If you skip one of the variables, the default value will be applied.
+If you skip one of the variables, the default value will be applied. For OpenvVPN <=2.3.x, the configuration item should look like this:
 
-    # use otp passwords with custom settings
+    # use otp passwords with custom settings (OpenVPN<=2.3.x syntax)
     plugin /usr/lib64/openvpn/plugins/openvpn-otp.so otp_secrets=/etc/my_otp_secret_file otp_slop=300 totp_t0=2 totp_step=30 totp_digits=8 motp_step=10
+
+OpenVPN 2.4 requires plugin parameters to be put in double quotes:
+
+    # use otp passwords with custom settings (OpenVPN>=2.4 syntax)
+    plugin "/usr/lib64/openvpn/plugins/openvpn-otp.so" "otp_secrets=/etc/my_otp_secret_file otp_slop=300 totp_t0=2 totp_step=30 totp_digits=8 motp_step=10"
+
 
 It is important to mention that totp_step has to be same on both, the client and server, because it is used for calculation of current token value.
 
