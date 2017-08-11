@@ -177,6 +177,13 @@ $ make -f /usr/share/selinux/devel/Makefile openvpn_otp.pp
 $ semodule --install openvpn_otp.pp 
 ```
 
+Using Google Authenticator on your server and mobile
+====================================================
+
+- install `google-authenticator` on your server
+- run `google-authenticator --time-based --disallow-reuse --force --rate-limit=3 --rate-time=30 --window-size=17 --issuer=foocorp --label=user@hostname --secret=/root/.user.google_authenticator > /root/user.auth`
+- `user.auth` file will contain the key for entry into `opt-secrets`, and the Google URL containing the image to be scanned with the Google Authenticator mobile app
+
 Troubleshooting
 ===============
 
