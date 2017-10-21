@@ -45,6 +45,7 @@ By default the following settings are applied:
     motp_step=10                          # Step value for MOTP
     hotp_syncwindow=2                     # Maximum drifts allowed for clients to resynchronise their tokens' counters (see rfc4226#section-7.4)
     hotp_counters=/var/spool/openvpn/hotp-counters/      # HOTP counters directory
+    password_is_cr=0                      # If set to 1, openvtp-otp will expect password as result of a challenge/response protocol  
     debug=0                               # Debug mode: 0=disabled, 1=enabled
 
 Add these variables on the same line as ``plugin /.../openvpn-otp.so`` line if you want different values.
