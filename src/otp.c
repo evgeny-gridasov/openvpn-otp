@@ -25,6 +25,7 @@
 #include "hex.h"
 #define MAXWORDLEN 256
 
+#include "openvpn-cr.h"
 
 static char *otp_secrets = "/etc/ppp/otp-secrets";
 static char *hotp_counters = "/var/spool/openvpn/hotp-counters/";
@@ -39,6 +40,8 @@ static int motp_step = 10;
 static int hotp_syncwindow = 2;
 
 static int debug = 0;
+
+static int password_is_cr = 0;
 
 typedef struct user_entry {
     char name[MAXWORDLEN];
@@ -630,6 +633,12 @@ openvpn_plugin_open_v1 (unsigned int *type_mask, const char *argv[], const char 
   }
   LOG("OTP-AUTH: hotp_syncwindow=%i\n", hotp_syncwindow);
 
+  const char * cfg_password_cr = get_env("password_is_cr", argv);
+  if (cfg_password_cr != NULL) {
+	  password_is_cr = atoi(cfg_password_cr);
+  }
+  LOG("OTP-AUTH: password_is_cr=%i\n", password_is_cr);
+
   const char * cfg_debug = get_env("debug", argv);
   if (cfg_debug != NULL) {
        debug = atoi(cfg_debug);
@@ -659,8 +668,23 @@ openvpn_plugin_func_v1 (openvpn_plugin_handle_t handle, const int type, const ch
 	  return OPENVPN_PLUGIN_FUNC_ERROR;
   }
 
+  const char *otp_password;
+  openvpn_response resp;
+  if (password_is_cr) {
+	  char *parse_error;
+	  if (!extract_openvpn_cr(password, &resp, &parse_error)) {
+		  LOG("OTP-AUTH: Error extracting challenge/response from '%s'. Parse error = '%s'", password, parse_error);
+		  return OPENVPN_PLUGIN_FUNC_ERROR;
+	  }
+	  /*Take the response part, 'password' is for other authenticators*/
+	  otp_password = (const char *)resp.response;
+  }
+  else {
+	  otp_password = password;
+  }
+   
   /* check entered username/password against what we require */
-  int ok = otp_verify(username, password);
+  int ok = otp_verify(username, otp_password);
 
   if (ok == 1) {
     LOG("OTP-AUTH: authentication succeeded for username '%s', remote %s:%s\n", username, ip, port);
