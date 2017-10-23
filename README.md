@@ -45,6 +45,7 @@ By default the following settings are applied:
     motp_step=10                          # Step value for MOTP
     hotp_syncwindow=2                     # Maximum drifts allowed for clients to resynchronise their tokens' counters (see rfc4226#section-7.4)
     hotp_counters=/var/spool/openvpn/hotp-counters/      # HOTP counters directory
+    password_is_cr=0                      # If set to 1, openvtp-otp will expect password as result of a challenge/response protocol  
     debug=0                               # Debug mode: 0=disabled, 1=enabled
 
 Add these variables on the same line as ``plugin /.../openvpn-otp.so`` line if you want different values.
@@ -68,7 +69,8 @@ Add the following lines to your OpenVPN clients' configuration files:
     # do not cache auth info
     auth-nocache
 
-OpenVPN will re-negotiate username/password details every 3600 seconds by default. To disable that behaviour, add the following line to both client and server configs:
+OpenVPN will re-negotiate username/password details every 3600 seconds by default.
+To disable that behaviour, add the following line to both client and server configs:
 
     # disable username/password renegotiation
     reneg-sec 0
@@ -117,8 +119,41 @@ password: 5uP3rH4x0r797104
 username: john
 password: 408923
 ```
+OpenVPN Challenge/Response
+==========================
 
+This plugin also supports the OpenVPN challenge response protocol as described [here](https://openvpn.net/index.php/open-source/documentation/miscellaneous/79-management-interface.html). This protocol seperates the password authentication
+from the otp part. In doing so, the otp can be added as an additional protection on top of normal username/password protection. This feature is
+controlled by the ``password_is_cr`` flag and disabled by default.
 
+To activate it, you need to set ``password_is_cr=1`` in your openvpn-otp configuration and add the following line to your client configuration files:
+
+    # use Google Authenticator OTP
+    static-challenge "Enter Google Authenticator Token" 1
+
+This will instruct the OpenVPN GUI to prompt the user for a username, password and a one time token in a seperate field. From the 
+[OpenVPN manual](https://community.openvpn.net/openvpn/wiki/Openvpn24ManPage):<br>
+``static-challenge t e`` : Enable static challenge/response protocol using challenge text t, with echo flag given by e (0|1).
+The echo flag indicates whether or not the user's response to the challenge should be echoed.<br>
+
+In this case when users vpn in, they will be asked for a username, a password **and a pin+current OTP number from the OTP token**. The prompt for the pin+current OTP number will be the first argument of the ``static-challenge`` option (the second argument controls if the input is masked or clear-type when the user enters it).
+The user's response for that additional field will be passed to openvpn-otp, who will ignore the password, which presumably will be checked by other authentication mechanisms. Examples for users bob, alice and john:
+
+```
+username: bob
+password: <whatever>
+response: 1234920151
+
+username: alice
+password: <whatever>
+response: 5uP3rH4x0r797104
+
+username: john
+password: <whatever>
+response: 408923
+```
+
+**Please note:** the flags go together, i.e. making the changes only in the openvpn-otp config and not in the client config or vice versa will break the system.
 
 HOTP counters initialisation
 ============================
