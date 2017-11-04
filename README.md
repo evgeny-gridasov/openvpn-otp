@@ -119,41 +119,59 @@ password: 5uP3rH4x0r797104
 username: john
 password: 408923
 ```
-OpenVPN Challenge/Response
-==========================
+Using OpenVPN OTP for Multi-Factor Authentication
+=================================================
+You can use this plugin to do multi-factor authentication, by using the OpenVPN Challenge/Response feature.
+For the moment this is supported by two plugins: **OpenVPN OTP** and [OpenVPN Auth-LDAP](https://github.com/guywyers/openvpn-auth-ldap).
 
-This plugin also supports the OpenVPN challenge response protocol as described [here](https://openvpn.net/index.php/open-source/documentation/miscellaneous/79-management-interface.html). This protocol seperates the password authentication
-from the otp part. In doing so, the otp can be added as an additional protection on top of normal username/password protection. This feature is
-controlled by the ``password_is_cr`` flag and disabled by default.
-
-To activate it, you need to set ``password_is_cr=1`` in your openvpn-otp configuration and add the following line to your client configuration files:
-
+There are three side to this OpenVPN, the users and the plugins.
+### OpenVPN
+  The feature needs to be activated in the **client configuration file** with the ``static-challenge`` flag:
+  
     # use Google Authenticator OTP
     static-challenge "Enter Google Authenticator Token" 1
 
-This will instruct the OpenVPN GUI to prompt the user for a username, password and a one time token in a seperate field. From the 
-[OpenVPN manual](https://community.openvpn.net/openvpn/wiki/Openvpn24ManPage):<br>
-``static-challenge t e`` : Enable static challenge/response protocol using challenge text t, with echo flag given by e (0|1).
-The echo flag indicates whether or not the user's response to the challenge should be echoed.<br>
+   From the [OpenVPN manual](https://community.openvpn.net/openvpn/wiki/Openvpn24ManPage):
+   ``static-challenge t e`` : Enable static challenge/response protocol using challenge text t, with echo flag given by e (0|1).
+   The echo flag indicates whether or not the user's response to the challenge should be echoed.<br>
+   Also, you need to add both plugins to your openvpn server configuration. Having the two auth plugins present, will require that both    of them authenticate the user, ie it is not **one of the two**, it's **both**.
+   ````
+   #PLUGIN SECTION
+   #LDAP (Active Directory Authentication) PLUGIN
+   plugin /usr/lib/openvpn/openvpn-auth-ldap.so /etc/openvpn/auth/auth-ldap.conf
+   #OTP PLUGIN
+   plugin /usr/local/lib/openvpn/openvpn-otp.so "password_is_cr=1 otp_secrets=/etc/openvpn/auth/otp-secrets"
+   ````
+   
+### Users
+If the ``static-challenge`` flag is set when the users vpn in, they will be asked for a username, a password **and a pin+current OTP number from the OTP token**. The prompt for the pin+current OTP number will be the first argument of the ``static-challenge`` option (the second argument controls if the input is masked or clear-type when the user enters it). The input for both fields is combined and passed to both plug-ins as a specially formatted password.
 
-In this case when users vpn in, they will be asked for a username, a password **and a pin+current OTP number from the OTP token**. The prompt for the pin+current OTP number will be the first argument of the ``static-challenge`` option (the second argument controls if the input is masked or clear-type when the user enters it).
-The user's response for that additional field will be passed to openvpn-otp, who will ignore the password, which presumably will be checked by other authentication mechanisms. Examples for users bob, alice and john:
+### Plug-ins
+If the ``static-challenge`` flag is set, passwords that are passed to plugins, will have a special format. So plug-ins need to be signalled about this in their configuration:
+* In **openvpn-otp** this is controlled by the ``password_is_cr`` flag and disabled by default. So to enable it, set ``password_is_cr=1`` in your openvpn-otp configuration.
+* In **openvpn-auth-ldap** this is controlled by the ``PasswordIsCR`` flag in the [configuration file](https://github.com/guywyers/openvpn-auth-ldap/blob/master/auth-ldap.conf):
+````
+# Uncomment and set to true to support OpenVPN Challenge/Response
+# PasswordIsCR	true
+````   
+The various settings will pass username, password and the response to the challenge to both plug-ins. The plug-ins will parse this response (triggered by the flags in their configuration) and each plugin will authenticate the user by looking at the field that's relevant. Examples for users bob, alice and john:
 
 ```
 username: bob
-password: <whatever>
-response: 1234920151
+password: password1         # this is the LDAP password, verified by openvpn-auth-ldap
+response: 1234920151        # this is a (simple) pin plus a Google OTP, verified by openvpn-otp
 
 username: alice
-password: <whatever>
-response: 5uP3rH4x0r797104
+password: password2         # this is the LDAP password, verified by openvpn-auth-ldap
+response: 5uP3rH4x0r797104  # this is a (strong) pin plus a Google OTP, verified by openvpn-otp
 
 username: john
-password: <whatever>
-response: 408923
+password: password3         # this is the LDAP password, verified by openvpn-auth-ldap
+response: 408923            # this is the Google OTP, verified by openvpn-otp
 ```
+The last example (user john) is probably the most typical use case: a first level of authentication of username and password against the LDAP and then a second level of authenitcation using an OTP, which doesn't require a pin, because the LDAP authentication already uses a password.<br>
 
-**Please note:** the flags go together, i.e. making the changes only in the openvpn-otp config and not in the client config or vice versa will break the system.
+**Please note:** the various flags go together, i.e. making the changes only in the openvpn-otp or openvpn-auth-ldap config and not in the client config or vice versa will break the system.
 
 HOTP counters initialisation
 ============================
