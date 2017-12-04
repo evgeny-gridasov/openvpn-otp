@@ -122,7 +122,7 @@ password: 408923
 Using OpenVPN OTP for Multi-Factor Authentication
 =================================================
 You can use this plugin to do multi-factor authentication, by using the OpenVPN Challenge/Response feature.
-For the moment this is supported by two plugins: **OpenVPN OTP** and [OpenVPN Auth-LDAP](https://github.com/guywyers/openvpn-auth-ldap).
+For the moment this is supported by two plugins: **OpenVPN OTP** and a fork of [OpenVPN Auth-LDAP](https://github.com/guywyers/openvpn-auth-ldap).
 
 There are three side to this OpenVPN, the users and the plugins.
 ### OpenVPN
@@ -171,7 +171,7 @@ response: 408923            # this is the Google OTP, verified by openvpn-otp
 ```
 The last example (user john) is probably the most typical use case: a first level of authentication of username and password against the LDAP and then a second level of authenitcation using an OTP, which doesn't require a pin, because the LDAP authentication already uses a password.<br>
 
-**Please note:** the various flags go together, i.e. making the changes only in the openvpn-otp or openvpn-auth-ldap config and not in the client config or vice versa will break the system.
+**Please note:** the various flags go together, i.e. making the changes only in the openvpn-otp or openvpn-auth-ldap config and not in the client config or vice versa will break the system. Also, please make sure that you're using a [forked](https://github.com/guywyers/openvpn-auth-ldap) version of Auth-LDAP plugin.
 
 HOTP counters initialisation
 ============================
