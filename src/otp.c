@@ -673,7 +673,7 @@ openvpn_plugin_func_v1 (openvpn_plugin_handle_t handle, const int type, const ch
   if (password_is_cr) {
 	  char *parse_error;
 	  if (!extract_openvpn_cr(password, &resp, &parse_error)) {
-		  LOG("OTP-AUTH: Error extracting challenge/response from '%s'. Parse error = '%s'", password, parse_error);
+		  LOG("OTP-AUTH: Error extracting challenge/response. Parse error = '%s'\n", parse_error);
 		  return OPENVPN_PLUGIN_FUNC_ERROR;
 	  }
 	  /*Take the response part, 'password' is for other authenticators*/
