@@ -358,13 +358,12 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
             continue;
         }
 
-        DEBUG("OTP-AUTH: username '%s' exists in '%s'\n", vpn_username, otp_secrets);
-
         /* Handle non-otp passwords before trying to parse out otp fields */
         if (!strncasecmp(user_entry.secret, "plain:", sizeof("plain:") - 1)) {
             const char *password = user_entry.secret + sizeof("plain:") - 1;
             if (vpn_username && !strcmp (vpn_username, user_entry.name)
                 && vpn_secret && password && !strcmp (vpn_secret, password)) {
+                DEBUG("OTP-AUTH: username '%s' exists in '%s'\n", vpn_username, otp_secrets);
                 ok = 1;
             }
             goto done;
