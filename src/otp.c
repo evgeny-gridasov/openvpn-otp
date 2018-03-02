@@ -7,6 +7,7 @@
 #include <ctype.h>
 #include <inttypes.h>
 
+
 #ifndef htobe64
 #include <netinet/in.h>
 #endif
@@ -363,8 +364,8 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
         /* Handle non-otp passwords before trying to parse out otp fields */
         if (!strncasecmp(user_entry.secret, "plain:", sizeof("plain:") - 1)) {
             const char *password = user_entry.secret + sizeof("plain:") - 1;
-            if (vpn_username && !strcmp (vpn_username, user_entry.name)
-                && vpn_secret && password && !strcmp (vpn_secret, password)) {
+            if (!strcmp (vpn_username, user_entry.name)
+                && password && !strcmp (vpn_secret, password)) {
                 ok = 1;
             }
             goto done;
@@ -662,10 +663,24 @@ openvpn_plugin_func_v1 (openvpn_plugin_handle_t handle, const int type, const ch
   const char *ip = get_env ("untrusted_ip", envp);
   const char *port = get_env ("untrusted_port", envp);
 
+  if (username == NULL) {
+    LOG("OTP_AUTH: Username is missing\n");
+    return OPENVPN_PLUGIN_FUNC_ERROR;
+  }
+  if (password == NULL) {
+    LOG("OTP_AUTH: Password is missing\n");
+    return OPENVPN_PLUGIN_FUNC_ERROR;
+  }
+  if (ip == NULL || port == NULL) {
+   LOG("OTP_AUTH: IP or Port number is missing\n");
+   return OPENVPN_PLUGIN_FUNC_ERROR;
+  }
+
   const int ulen = strlen(username);
   const int pwlen = strlen(password);
   if ( ulen > MAXWORDLEN || ulen == 0 || pwlen > MAXWORDLEN || pwlen == 0) {
-	  return OPENVPN_PLUGIN_FUNC_ERROR;
+    LOG("OTP_AUTH: Username or password is too long or empty\n");
+    return OPENVPN_PLUGIN_FUNC_ERROR;
   }
 
   const char *otp_password;
@@ -681,6 +696,11 @@ openvpn_plugin_func_v1 (openvpn_plugin_handle_t handle, const int type, const ch
   }
   else {
 	  otp_password = password;
+  }
+
+  if (otp_password == NULL) {
+    LOG("OTP_AUTH: OTP Password is missing\n");
+    return OPENVPN_PLUGIN_FUNC_ERROR;
   }
    
   /* check entered username/password against what we require */
