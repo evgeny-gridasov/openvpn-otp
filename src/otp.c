@@ -405,7 +405,11 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
         unsigned maclen;
 
         if (!strncasecmp("totp", otp_params.method, 4)) {
+#ifdef HAVE_OPENSSL_110
+            HMAC_CTX* hmac;
+#else
             HMAC_CTX hmac;
+#endif
             const uint8_t *otp_bytes;
             uint32_t otp, divisor = 1;
             int tstep = totp_step;
@@ -426,11 +430,18 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
             for (i = -range; !ok && i <= range; ++i) {
                 Tn = htobe64(T + i);
 
+#ifdef HAVE_OPENSSL_110
+                hmac = HMAC_CTX_new();
+                HMAC_Init_ex(hmac, otp_key, key_len, otp_digest, NULL);
+                HMAC_Update(hmac, (uint8_t *)&Tn, sizeof(Tn));
+                HMAC_Final(hmac, mac, &maclen);
+                HMAC_CTX_free(hmac);
+#else
                 HMAC_CTX_init(&hmac);
                 HMAC_Init(&hmac, otp_key, key_len, otp_digest);
                 HMAC_Update(&hmac, (uint8_t *)&Tn, sizeof(Tn));
                 HMAC_Final(&hmac, mac, &maclen);
-
+#endif
                 otp_bytes = mac + (mac[maclen - 1] & 0x0f);
                 otp = ((otp_bytes[0] & 0x7f) << 24) | (otp_bytes[1] << 16) |
                     (otp_bytes[2] << 8) | otp_bytes[3];
@@ -448,7 +459,11 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
             }
         }
         else if (!strncasecmp("hotp", otp_params.method, 4)) {
+#ifdef HAVE_OPENSSL_110
+            HMAC_CTX* hmac;
+#else
             HMAC_CTX hmac;
+#endif
             const uint8_t *otp_bytes;
             uint32_t otp, divisor = 1;
             int tdigits = totp_digits;
@@ -466,11 +481,18 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
               for (i = 0; !ok && i <= hotp_syncwindow; i++) {
                   Ti = T+i;
                   Tn = htobe64(Ti);
-
+#ifdef HAVE_OPENSSL_110
+                  hmac = HMAC_CTX_new();
+                  HMAC_Init_ex(hmac, otp_key, key_len, otp_digest, NULL);
+                  HMAC_Update(hmac, (uint8_t *)&Tn, sizeof(Tn));
+                  HMAC_Final(hmac, mac, &maclen);
+                  HMAC_CTX_free(hmac);
+#else
                   HMAC_CTX_init(&hmac);
                   HMAC_Init(&hmac, otp_key, key_len, otp_digest);
                   HMAC_Update(&hmac, (uint8_t *)&Tn, sizeof(Tn));
                   HMAC_Final(&hmac, mac, &maclen);
+#endif
 
                   otp_bytes = mac + (mac[maclen - 1] & 0x0f);
                   otp = ((otp_bytes[0] & 0x7f) << 24) | (otp_bytes[1] << 16) |
@@ -498,6 +520,21 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
             T = time(NULL) / motp_step;
 
             for (i = -range; !ok && i <= range; ++i) {
+#ifdef HAVE_OPENSSL_110
+                EVP_MD_CTX* ctx;
+                ctx = EVP_MD_CTX_new();
+                EVP_DigestInit_ex(ctx, otp_digest, NULL);
+                n = sprintf(buf, "%" PRIu64, T + i);
+                EVP_DigestUpdate(ctx, buf, n);
+                EVP_DigestUpdate(ctx, otp_key, key_len);
+                EVP_DigestUpdate(ctx, otp_params.pin, strlen(otp_params.pin));
+                if (otp_params.udid) {
+                    int udid_len = strlen(otp_params.udid);
+                    EVP_DigestUpdate(ctx, otp_params.udid, udid_len);
+                }
+                EVP_DigestFinal_ex(ctx, mac, &maclen);
+                EVP_MD_CTX_free(ctx);
+#else
                 EVP_MD_CTX ctx;
                 EVP_MD_CTX_init(&ctx);
                 EVP_DigestInit_ex(&ctx, otp_digest, NULL);
@@ -511,6 +548,7 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
                 }
                 EVP_DigestFinal_ex(&ctx, mac, &maclen);
                 EVP_MD_CTX_cleanup(&ctx);
+#endif
 
                 snprintf(secret, sizeof(secret),
                          "%02x%02x%02x", mac[0], mac[1], mac[2]);
