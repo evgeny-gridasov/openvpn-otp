@@ -406,7 +406,7 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
 
         if (!strncasecmp("totp", otp_params.method, 4)) {
 #ifdef HAVE_OPENSSL_110
-            HMAC_CTX* hmac;
+            HMAC_CTX* hmac = HMAC_CTX_new();
 #else
             HMAC_CTX hmac;
 #endif
@@ -431,11 +431,10 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
                 Tn = htobe64(T + i);
 
 #ifdef HAVE_OPENSSL_110
-                hmac = HMAC_CTX_new();
+                HMAC_CTX_reset(hmac);
                 HMAC_Init_ex(hmac, otp_key, key_len, otp_digest, NULL);
                 HMAC_Update(hmac, (uint8_t *)&Tn, sizeof(Tn));
                 HMAC_Final(hmac, mac, &maclen);
-                HMAC_CTX_free(hmac);
 #else
                 HMAC_CTX_init(&hmac);
                 HMAC_Init(&hmac, otp_key, key_len, otp_digest);
@@ -457,10 +456,13 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
                     DEBUG("OTP-AUTH: auth ok for method='%s', client_username='%s', client_secret='%s'\n", otp_params.method, vpn_username, vpn_secret);
                 }
             }
+#ifdef HAVE_OPENSSL_110
+            HMAC_CTX_free(hmac);
+#endif
         }
         else if (!strncasecmp("hotp", otp_params.method, 4)) {
 #ifdef HAVE_OPENSSL_110
-            HMAC_CTX* hmac;
+            HMAC_CTX* hmac = HMAC_CTX_new();
 #else
             HMAC_CTX hmac;
 #endif
@@ -482,11 +484,10 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
                   Ti = T+i;
                   Tn = htobe64(Ti);
 #ifdef HAVE_OPENSSL_110
-                  hmac = HMAC_CTX_new();
+                  HMAC_CTX_reset(hmac);
                   HMAC_Init_ex(hmac, otp_key, key_len, otp_digest, NULL);
                   HMAC_Update(hmac, (uint8_t *)&Tn, sizeof(Tn));
                   HMAC_Final(hmac, mac, &maclen);
-                  HMAC_CTX_free(hmac);
 #else
                   HMAC_CTX_init(&hmac);
                   HMAC_Init(&hmac, otp_key, key_len, otp_digest);
@@ -509,10 +510,18 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
                       DEBUG("OTP-AUTH: auth ok for method='%s', client_username='%s', client_secret='%s', hotp=%"PRIu64"\n", otp_params.method, vpn_username, vpn_secret, Ti);
                       hotp_set_counter(otp_params.key, Ti+1);
                   }
-              }
             }
+#ifdef HAVE_OPENSSL_110
+            HMAC_CTX_free(hmac);
+#endif
+          }
         }
         else if (!strcasecmp("motp", otp_params.method)) {
+#ifdef HAVE_OPENSSL_110
+            EVP_MD_CTX* ctx = EVP_MD_CTX_new();
+#else
+            EVP_MD_CTX ctx;
+#endif
             char buf[64];
             int n;
             int range = otp_slop / motp_step;
@@ -521,8 +530,7 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
 
             for (i = -range; !ok && i <= range; ++i) {
 #ifdef HAVE_OPENSSL_110
-                EVP_MD_CTX* ctx;
-                ctx = EVP_MD_CTX_new();
+                EVP_MD_CTX_reset(ctx); 
                 EVP_DigestInit_ex(ctx, otp_digest, NULL);
                 n = sprintf(buf, "%" PRIu64, T + i);
                 EVP_DigestUpdate(ctx, buf, n);
@@ -533,9 +541,7 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
                     EVP_DigestUpdate(ctx, otp_params.udid, udid_len);
                 }
                 EVP_DigestFinal_ex(ctx, mac, &maclen);
-                EVP_MD_CTX_free(ctx);
 #else
-                EVP_MD_CTX ctx;
                 EVP_MD_CTX_init(&ctx);
                 EVP_DigestInit_ex(&ctx, otp_digest, NULL);
                 n = sprintf(buf, "%" PRIu64, T + i);
@@ -561,6 +567,9 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
                     DEBUG("OTP-AUTH: auth ok for method='%s', client_username='%s', client_secret='%s'\n", otp_params.method, vpn_username, vpn_secret);
                 }
             }
+#ifdef HAVE_OPENSSL_110
+            EVP_MD_CTX_free(ctx);
+#endif
         }
         else {
             LOG("OTP-AUTH: unknown OTP method %s\n", otp_params.method);
