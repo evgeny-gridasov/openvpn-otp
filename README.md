@@ -249,6 +249,7 @@ This plugin has been successfully compiled and tested with:
  - Ubuntu Linux 14.04
  - Ubuntu Linux 16.04
  - Ubuntu Linux 18.04 (OpenSSL 1.1.0)
+ - CentOS / RHEL 7
  - FreeBSD 11.2
  - OpenBSD 6.4
 
