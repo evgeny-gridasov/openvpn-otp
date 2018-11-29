@@ -7,15 +7,30 @@ AC_CONFIG_HEADERS([config.h])
 LT_INIT([disable-static])
 AC_CONFIG_MACRO_DIR([m4])
 
+case "$host" in
+*-*-freebsd*)
+	CPPFLAGS="$CPPFLAGS -I/usr/local/include"
+	LDFLAGS="$LDFLAGS -L/usr/local/lib -Wl,-rpath,/usr/local/lib"
+	pkgconfigdir="/usr/lib/pkgconfig"
+	;;
+*-*-openbsd*)
+	CPPFLAGS="$CPPFLAGS -I/usr/local/include"
+	LDFLAGS="$LDFLAGS -L/usr/local/lib -Wl,-rpath,/usr/local/lib"
+	pkgconfigdir="/usr/lib/pkgconfig"
+	;;
+esac
+
 # Checks for programs.
 AC_PROG_CC
 AC_PROG_CXX
 
 # Checks for libraries.
-AC_CHECK_LIB([crypto], [HMAC_CTX_init], [],
-	[AC_CHECK_LIB([crypto], [HMAC_CTX_new], [AC_DEFINE([HAVE_OPENSSL_110], [1], [Using OpenSSL 1.1.0])], [AC_MSG_ERROR([OpenSSL libraries required])]) ])
+AC_CHECK_LIB([crypto], [HMAC_CTX_init, EVP_MD_CTX_create], [],
+	[AC_CHECK_LIB([crypto], [HMAC_CTX_new, EVP_MD_CTX_new], [AC_DEFINE([HAVE_OPENSSL_110], [1], [Using OpenSSL 1.1.0])], [AC_MSG_ERROR([OpenSSL libraries required])]) ])
 
 # Checks for header files.
+AC_CHECK_HEADERS([endian.h], [],
+	[AC_CHECK_HEADERS([sys/endian.h], [], [AC_MSG_ERROR([Missing endian header])] ) ])
 AC_CHECK_HEADERS([inttypes.h netinet/in.h stdint.h string.h], [],
 	[AC_MSG_ERROR([Missing system headers])]   )
 AC_CHECK_HEADERS([openssl/evp.h openssl/hmac.h], [],

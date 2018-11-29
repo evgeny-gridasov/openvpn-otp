@@ -2,7 +2,13 @@
 
 #include <stdio.h>
 #include <stdint.h>
+
+#ifdef HAVE_ENDIAN_H
 #include <endian.h>
+#elif HAVE_SYS_ENDIAN_H
+#include <sys/endian.h>
+#endif
+
 #include <string.h>
 #include <ctype.h>
 #include <inttypes.h>
@@ -265,7 +271,7 @@ hotp_read_counter(const void * otp_key)
 {
     /* Compute SHA1 for the otp_key */
     unsigned char hash[SHA_DIGEST_LENGTH];
-    unsigned char hexdigest[SHA_DIGEST_LENGTH*2];
+    char hexdigest[SHA_DIGEST_LENGTH*2];
     char line[256];
     char path[256];
     FILE *counter_file;
@@ -298,7 +304,7 @@ hotp_set_counter(const void * otp_key, int counter)
 {
     /* Compute SHA1 for the otp_key */
     unsigned char hash[SHA_DIGEST_LENGTH];
-    unsigned char hexdigest[SHA_DIGEST_LENGTH*2];
+    char hexdigest[SHA_DIGEST_LENGTH*2];
     char line[256];
     char path[256];
     FILE *counter_file;

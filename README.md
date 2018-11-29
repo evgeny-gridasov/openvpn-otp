@@ -7,7 +7,10 @@ Compatible with Google Authenticator software token, other software and hardware
 Compile and install ``openvpn-otp.so`` file to your OpenVPN plugins directory (usually ``/usr/lib/openvpn`` or ``/usr/lib64/openvpn/plugins``).
 
 Be sure you've installed the following packages first:
+* `openvpn`
+* `openvpn-devel` (Some distros have `openvpn-plugin.h` file in a separate package)
 * `autoconf`
+* `automake`
 * `libtool`
 * `libssl-dev`/`openssl-devel`
 
@@ -236,6 +239,25 @@ Using Google Authenticator on your server and mobile
 - install `google-authenticator` on your server
 - run `google-authenticator --time-based --disallow-reuse --force --rate-limit=3 --rate-time=30 --window-size=17 --issuer=foocorp --label=user@hostname --secret=/root/.user.google_authenticator > /root/user.auth`
 - `user.auth` file will contain the key for entry into `opt-secrets`, and the Google URL containing the image to be scanned with the Google Authenticator mobile app
+
+
+Supported Operating Systems
+===========================
+
+This plugin has been successfully compiled and tested with:
+
+ - Ubuntu Linux 14.04
+ - Ubuntu Linux 16.04
+ - Ubuntu Linux 18.04 (OpenSSL 1.1.0)
+ - FreeBSD 11.2
+ - OpenBSD 6.4
+
+In OpenBSD, please use autoconf 2.69 and automake 1.15.1. You might have to export version numbers before running `./autogen.sh`:
+```
+export AUTOMAKE_VERSION=1.15
+export AUTOCONF_VERSION=2.69
+```
+It should work in other *NIX environments, please raise an issue if it does not.
 
 Troubleshooting
 ===============
