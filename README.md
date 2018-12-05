@@ -12,7 +12,7 @@ Be sure you've installed the following packages first:
 * `autoconf`
 * `automake`
 * `libtool`
-* `libssl-dev`/`openssl-devel`
+* `libssl-dev`/`openssl-devel`/`libressl-devel`
 
 To bootstrap autotools (generate configure and Makefiles):
 
@@ -246,12 +246,12 @@ Supported Operating Systems
 
 This plugin has been successfully compiled and tested with:
 
- - Ubuntu Linux 14.04
- - Ubuntu Linux 16.04
- - Ubuntu Linux 18.04 (OpenSSL 1.1.0)
+ - Ubuntu Linux 14.04 / 16.04 / 18.04
  - CentOS / RHEL 7
  - FreeBSD 11.2
  - OpenBSD 6.4
+ - NetBSD 8.0
+ - DragonFly BSD 5.4
 
 In OpenBSD, please use autoconf 2.69 and automake 1.15.1. You might have to export version numbers before running `./autogen.sh`:
 ```

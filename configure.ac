@@ -13,9 +13,19 @@ case "$host" in
 	LDFLAGS="$LDFLAGS -L/usr/local/lib -Wl,-rpath,/usr/local/lib"
 	pkgconfigdir="/usr/lib/pkgconfig"
 	;;
+*-*-dragonfly*)
+	CPPFLAGS="$CPPFLAGS -I/usr/local/include"
+	LDFLAGS="$LDFLAGS -L/usr/local/lib -Wl,-rpath,/usr/local/lib"
+	pkgconfigdir="/usr/lib/pkgconfig"
+	;;
 *-*-openbsd*)
 	CPPFLAGS="$CPPFLAGS -I/usr/local/include"
 	LDFLAGS="$LDFLAGS -L/usr/local/lib -Wl,-rpath,/usr/local/lib"
+	pkgconfigdir="/usr/lib/pkgconfig"
+	;;
+*-*-netbsd*)
+	CPPFLAGS="$CPPFLAGS -I/usr/pkg/include"
+	LDFLAGS="$LDFLAGS -L/usr/pkg/lib -Wl,-rpath,/usr/pkg/lib"
 	pkgconfigdir="/usr/lib/pkgconfig"
 	;;
 esac
