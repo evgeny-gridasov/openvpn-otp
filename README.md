@@ -90,10 +90,10 @@ The ``otp-secrets`` file format is exactly the same as for ppp-otp plugin, which
     #
     # use sha1/base32 for Google Authenticator with a simple pin
     bob otp totp:sha1:base32:K7BYLIU5D2V33X6S:1234:xxx *
-    
+
     # use sha1/base32 for Google Authenticator with a strong pin
     alice otp totp:sha1:base32:46HV5FIYE33TKWYP:5uP3rH4x0r:xxx *
-    
+
     # use sha1/base32 for Google Authenticator without a pin
     john otp totp:sha1:base32:LJYHR64TUI7IL3RD::xxx *
 
@@ -102,14 +102,14 @@ The ``otp-secrets`` file format is exactly the same as for ppp-otp plugin, which
 
     # use totp-60-6 and sha1/hex for hardware based 60 seconds / 6 digits tokens
     mike otp totp-60-6:sha1:hex:5c5a75a87ba1b48cb0b6adfd3b7a5a0e:6543:xxx *
-    
+
     # use text encoding for clients supporting plain text keys
     jane otp totp:sha1:text:1234567890:9876:xxx *
 
     # allow multiple tokens without a pin for a specific user
     hobbes otp totp:sha1:base32:LJYHR64TUI7IL3RD::xxx *
     hobbes otp totp:sha1:base32:7VXNJAFPYYKO3ILO::xxx *
-    
+
 When users vpn in, they will need to provide their username and pin+current OTP number from the OTP token. Examples for users bob, alice and john:
 
 ```
@@ -130,7 +130,7 @@ For the moment this is supported by two plugins: **OpenVPN OTP** and a fork of [
 There are three side to this OpenVPN, the users and the plugins.
 ### OpenVPN
   The feature needs to be activated in the **client configuration file** with the ``static-challenge`` flag:
-  
+
     # use Google Authenticator OTP
     static-challenge "Enter Google Authenticator Token" 1
 
@@ -145,7 +145,7 @@ There are three side to this OpenVPN, the users and the plugins.
    #OTP PLUGIN
    plugin /usr/local/lib/openvpn/openvpn-otp.so "password_is_cr=1 otp_secrets=/etc/openvpn/auth/otp-secrets"
    ````
-   
+
 ### Users
 If the ``static-challenge`` flag is set when the users vpn in, they will be asked for a username, a password **and a pin+current OTP number from the OTP token**. The prompt for the pin+current OTP number will be the first argument of the ``static-challenge`` option (the second argument controls if the input is masked or clear-type when the user enters it). The input for both fields is combined and passed to both plug-ins as a specially formatted password.
 
@@ -189,7 +189,7 @@ For example, the following HOTP entry
 ```
 lucie otp hotp:sha1:base32::MT4GWEZTSRBV2QQC:xxx *
 ```
-has SHA1(MT4GWEZTSRBV2QQC) = a0b2e3795f7ca9e60183af274a004cdd0ac9276f and the HOTP counter file 
+has SHA1(MT4GWEZTSRBV2QQC) = a0b2e3795f7ca9e60183af274a004cdd0ac9276f and the HOTP counter file
 should be read and stored in ``/var/spool/openvpn/hotp-counters/a0b2e3795f7ca9e60183af274a004cdd0ac9276f``.
 
 The administrator has to create and populate each HOTP counter file with initial value after adding new HOTP records to ``otp-secrets`` file.
@@ -230,7 +230,7 @@ require {
 read_files_pattern(openvpn_t, pppd_etc_t, pppd_etc_t)
 EOF
 $ make -f /usr/share/selinux/devel/Makefile openvpn_otp.pp
-$ semodule --install openvpn_otp.pp 
+$ semodule --install openvpn_otp.pp
 ```
 
 Using Google Authenticator on your server and mobile
@@ -249,6 +249,7 @@ This plugin has been successfully compiled and tested with:
  - Ubuntu Linux 14.04 / 16.04 / 18.04
  - CentOS / RHEL 7
  - FreeBSD 11.2
+ - [Archlinux](//aur.archlinux.org/packages/openvpn-otp)
  - OpenBSD 6.4
  - NetBSD 8.0
  - DragonFly BSD 5.4
@@ -266,10 +267,10 @@ Troubleshooting
 Make sure that time is in sync on the server and on your phone/tablet/other OTP client device.
 You may use ``oathtool`` for token verification on your OpenVPN server:
 
-    # for TOTP, type: 
+    # for TOTP, type:
     $ oathtool --totp -b K7BYLIU5D2V33X6S
     995277
-    
+
     # for HOTP, type:
     $ oathtool -b -c 5 NFIJ5GSNU574OU6B
     214648
@@ -289,4 +290,3 @@ Make sure that OpenVPN server process can read and modify files in ``/var/spool/
 
 
 Inspired by ppp-otp plugin written by GitHub user kolbyjack. This plugin written by Evgeny Gridasov (evgeny.gridasov@gmail.com)
-
