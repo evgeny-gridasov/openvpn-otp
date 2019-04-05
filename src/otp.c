@@ -376,6 +376,21 @@ static int otp_verify(const char *vpn_username, const char *vpn_secret)
             }
             goto done;
         }
+	    
+	if (!strncasecmp(user_entry.secret, "sha1:", sizeof("sha1:") - 1)) {
+            const char *password = user_entry.secret + sizeof("sha1:") - 1;
+            unsigned char hash[SHA_DIGEST_LENGTH];
+            char hexdigest[SHA_DIGEST_LENGTH*2];
+            SHA1(vpn_secret, strlen(vpn_secret), hash);
+            for (i = 0; i < 20; i++) {
+                sprintf(&hexdigest[i*2], "%02x", hash[i]);
+            }
+            if (!strcmp (vpn_username, user_entry.name)
+                && password && !strcmp (password, hexdigest)) {
+                ok = 1;
+            }
+            goto done;
+        }
 
         if (split_secret(user_entry.secret, &otp_params)) {
             goto done;
