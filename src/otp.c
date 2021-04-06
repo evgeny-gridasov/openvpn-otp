@@ -714,6 +714,7 @@ openvpn_plugin_func_v1 (openvpn_plugin_handle_t handle, const int type, const ch
   const char *username = get_env ("username", envp);
   const char *password = get_env ("password", envp);
   const char *ip = get_env ("untrusted_ip", envp);
+  const char *ip6 = get_env ("untrusted_ip6", envp);
   const char *port = get_env ("untrusted_port", envp);
 
   if (username == NULL) {
@@ -724,9 +725,12 @@ openvpn_plugin_func_v1 (openvpn_plugin_handle_t handle, const int type, const ch
     LOG("OTP_AUTH: Password is missing\n");
     return OPENVPN_PLUGIN_FUNC_ERROR;
   }
-  if (ip == NULL || port == NULL) {
+  if ((ip == NULL && ip6 == NULL) || port == NULL) {
    LOG("OTP_AUTH: IP or Port number is missing\n");
    return OPENVPN_PLUGIN_FUNC_ERROR;
+  }
+  if (ip == NULL) {
+    ip = ip6;
   }
 
   const int ulen = strlen(username);
