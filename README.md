@@ -125,7 +125,7 @@ password: 408923
 Using OpenVPN OTP for Multi-Factor Authentication
 =================================================
 You can use this plugin to do multi-factor authentication, by using the OpenVPN Challenge/Response feature.
-For the moment this is supported by two plugins: **OpenVPN OTP** and a fork of [OpenVPN Auth-LDAP](https://github.com/guywyers/openvpn-auth-ldap).
+For the moment this is supported by two plugins: **OpenVPN OTP** and [OpenVPN Auth-LDAP](https://github.com/threerings/openvpn-auth-ldap).
 
 There are three side to this OpenVPN, the users and the plugins.
 ### OpenVPN
@@ -152,7 +152,7 @@ If the ``static-challenge`` flag is set when the users vpn in, they will be aske
 ### Plug-ins
 If the ``static-challenge`` flag is set, passwords that are passed to plugins, will have a special format. So plug-ins need to be signalled about this in their configuration:
 * In **openvpn-otp** this is controlled by the ``password_is_cr`` flag and disabled by default. So to enable it, set ``password_is_cr=1`` in your openvpn-otp configuration.
-* In **openvpn-auth-ldap** this is controlled by the ``PasswordIsCR`` flag in the [configuration file](https://github.com/guywyers/openvpn-auth-ldap/blob/master/auth-ldap.conf):
+* In **openvpn-auth-ldap** this is controlled by the ``PasswordIsCR`` flag in the [configuration file](https://github.com/threerings/openvpn-auth-ldap/wiki/Configuration):
 ````
 # Uncomment and set to true to support OpenVPN Challenge/Response
 # PasswordIsCR	true
@@ -174,7 +174,7 @@ response: 408923            # this is the Google OTP, verified by openvpn-otp
 ```
 The last example (user john) is probably the most typical use case: a first level of authentication of username and password against the LDAP and then a second level of authenitcation using an OTP, which doesn't require a pin, because the LDAP authentication already uses a password.<br>
 
-**Please note:** the various flags go together, i.e. making the changes only in the openvpn-otp or openvpn-auth-ldap config and not in the client config or vice versa will break the system. Also, please make sure that you're using a [forked](https://github.com/guywyers/openvpn-auth-ldap) version of Auth-LDAP plugin.
+**Please note:** the various flags go together, i.e. making the changes only in the openvpn-otp or openvpn-auth-ldap config and not in the client config or vice versa will break the system. Also, please make sure that you're using at least version 2.0.4 of the [Auth-LDAP plugin](https://github.com/threerings/openvpn-auth-ldap).
 
 HOTP counters initialisation
 ============================
